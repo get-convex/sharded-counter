@@ -1,7 +1,15 @@
-import { defineSchema } from "convex/server";
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
 export default defineSchema(
   {
-    // Any tables used by the example app go here.
+    users: defineTable({
+      name: v.string(),
+    }),
+    backfillCursor: defineTable({
+      creationTime: v.number(),
+      id: v.string(),
+      isDone: v.boolean(),
+    }),
   },
 );

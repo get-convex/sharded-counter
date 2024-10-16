@@ -139,6 +139,34 @@ const friendCounts = new Counter<Record<Id<"users">, number>>(components.counter
 });
 ```
 
+## Backfilling an existing count
+
+If you want to count items like documents in a table, you may already have
+documents before installing the Counter component, and these should be
+accounted for.
+
+The tricky part is making sure to merge active updates to counts with old
+values that you want to backfill.
+
+See example code at the bottom of
+[example/convex/example.ts](example/convex/example.ts).
+
+Walkthrough of steps:
+
+1. Create `backfillCursor` table in schema.ts
+2. Create a new document in this table, with fields
+`{ creationTime: 0, id: "", isDone: false }`
+3. Wherever you want to update a counter based on a document changing, wrap the
+update in a conditional, so it only gets updated if the backfill has processed
+that document. In the example, you would be changing `insertUserBeforeBackfill`
+to be implemented as `insertUserDuringBackfill`.
+4. Define backfill functions similar to `backfillUsers` and `backfillUsersBatch`
+5. Call `backfillUsersBatch` from the dashboard.
+6. Remove the conditional when updating counters. In the example, you would be
+changing `insertUserDuringBackfill` to be implemented as
+`insertUserAfterBackfill`.
+7. Delete the `backfillCursor` table.
+
 # 🧑‍🏫 What is Convex?
 
 [Convex](https://convex.dev) is a hosted backend platform with a
