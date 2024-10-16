@@ -1,7 +1,7 @@
 {
-  "name": "sharded-counter",
+  "name": "@convex-dev/sharded-counter",
   "description": "A sharded counter component for Convex.",
-  "repository": "github:get-convex/counter",
+  "repository": "github:get-convex/sharded-counter",
   "homepage": "https://github.com/get-convex/sharded-counter#readme",
   "bugs": {
     "email": "support@convex.dev",
