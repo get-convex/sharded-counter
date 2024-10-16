@@ -170,6 +170,8 @@ changing `insertUserDuringBackfill` to be implemented as
 `insertUserAfterBackfill`.
 7. Delete the `backfillCursor` table.
 
+<!-- END: Include on https://convex.dev/components -->
+
 # 🧑‍🏫 What is Convex?
 
 [Convex](https://convex.dev) is a hosted backend platform with a
