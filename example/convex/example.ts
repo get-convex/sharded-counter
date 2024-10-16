@@ -1,9 +1,9 @@
 import { internalMutation, query, mutation, internalAction } from "./_generated/server";
 import { components, internal } from "./_generated/api";
-import { Counter } from "@convex-dev/counter";
+import { ShardedCounter } from "@convex-dev/sharded-counter";
 import { v } from "convex/values";
 
-const counter = new Counter(components.counter, {
+const counter = new ShardedCounter(components.shardedCounter, {
   shards: { beans: 10, users: 100 },
 });
 const numUsers = counter.for("users");
@@ -45,16 +45,16 @@ export const usingFunctions = internalMutation({
 export const directCall = internalMutation({
   args: {},
   handler: async (ctx, _args) => {
-    await ctx.runMutation(components.counter.public.add, {
+    await ctx.runMutation(components.shardedCounter.public.add, {
       name: "pennies",
       count: 250,
     });
-    await ctx.runMutation(components.counter.public.add, {
+    await ctx.runMutation(components.shardedCounter.public.add, {
       name: "beans",
       count: 3,
       shards: 100,
     });
-    const count = await ctx.runQuery(components.counter.public.count, {
+    const count = await ctx.runQuery(components.shardedCounter.public.count, {
       name: "beans",
     });
     return count;

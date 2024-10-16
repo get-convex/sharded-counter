@@ -1,9 +1,9 @@
-# Convex Counter Component
+# Convex Sharded Counter Component
 
-[![npm version](https://badge.fury.io/js/@convex-dev%2Fcounter.svg)](https://badge.fury.io/js/@convex-dev%2Fcounter)
+[![npm version](https://badge.fury.io/js/@convex-dev%2Fsharded-counter.svg)](https://badge.fury.io/js/@convex-dev%2Fsharded-counter)
 
 This component adds counters to Convex. It acts as a key-value store from
-string to number, with high throughput for updating values.
+string to number, with sharding to increase throughput when updating values.
 
 Since it's built on Convex, everything is automatically consistent, reactive,
 and cached.
@@ -44,7 +44,7 @@ export const getCount = query({
 First, install the component package:
 
 ```ts
-npm install @convex-dev/counter
+npm install @convex-dev/sharded-counter
 ```
 
 Then, create a `convex.config.ts` file in your app's `convex/` folder and install the
@@ -53,28 +53,30 @@ component by calling `use`:
 ```ts
 // convex/convex.config.ts
 import { defineApp } from "convex/server";
-import counter from "@convex-dev/counter/convex.config";
+import shardedCounter from "@convex-dev/sharded-counter/convex.config";
 
 const app = defineApp();
-app.use(counter);
+app.use(shardedCounter);
 
 export default app;
 ```
 
-Finally, create a new `Counter` within your `convex/` folder, and point it to
+Finally, create a new `ShardedCounter` within your `convex/` folder, and point it to
 the installed component.
 
 ```ts
 import { components } from "./_generated/api";
-import { Counter } from "@convex-dev/counter";
+import { ShardedCounter } from "@convex-dev/counter";
 
-const counter = new Counter(components.counter);
+const counter = new ShardedCounter(components.counter, {
+  ...options
+});
 ```
 
 ## Updating and reading counters
 
-Once you have a `Counter`, there are a few methods you can use to update the
-counter for a key in a mutation or action.
+Once you have a `ShardedCounter`, there are a few methods you can use to update
+the counter for a key in a mutation or action.
 
 ```ts
 await counter.add(ctx, "checkboxes"); // increment
@@ -102,18 +104,18 @@ When a single document is modified by two mutations at the same time, the
 mutations slow down to achieve
 [serializable results](https://docs.convex.dev/database/advanced/occ).
 
-To achieve high throughput, the Counter distributes counts across multiple
-documents, called "shards". Increments and decrements update a random shard,
-while queries of the total count read from all shards.
+To achieve high throughput, the ShardedCounter distributes counts across
+multiple documents, called "shards". Increments and decrements update a random
+shard, while queries of the total count read from all shards.
 
 1. More shards => greater throughput when incrementing or decrementing.
 2. Fewer shards => better latency when querying the count.
 
-You can set the number of shards when initializing the Counter, either setting
-it specially for each key:
+You can set the number of shards when initializing the ShardedCounter, either
+setting it specially for each key:
 
 ```ts
-const counter = new Counter(components.counter, {
+const counter = new ShardedCounter(components.shardedCounter, {
   shards: { checkboxes: 100 }, // 100 shards for the key "checkboxes"
 });
 ```
@@ -121,7 +123,7 @@ const counter = new Counter(components.counter, {
 Or by setting a default that applies to all keys not specified in `shards`:
 
 ```ts
-const counter = new Counter(components.counter, {
+const counter = new ShardedCounter(components.shardedCounter, {
   shards: { checkboxes: 100 },
   defaultShards: 20,
 });
@@ -131,18 +133,19 @@ The default number of shards if none is specified is 16.
 
 Note your keys can be a subtype of string. e.g. if you want to store a count of
 friends for each user, and you don't care about throughput for a single user,
-you would declare Counter like so:
+you would declare ShardedCounter like so:
 
 ```ts
-const friendCounts = new Counter<Record<Id<"users">, number>>(components.counter, {
-  defaultShards: 1,
-});
+const friendCounts = new ShardedCounter<Record<Id<"users">, number>>(
+  components.shardedCounter,
+  { defaultShards: 1 },
+);
 ```
 
 ## Backfilling an existing count
 
 If you want to count items like documents in a table, you may already have
-documents before installing the Counter component, and these should be
+documents before installing the ShardedCounter component, and these should be
 accounted for.
 
 The tricky part is making sure to merge active updates to counts with old
