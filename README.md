@@ -2,6 +2,10 @@
 
 [![npm version](https://badge.fury.io/js/@convex-dev%2Fsharded-counter.svg)](https://badge.fury.io/js/@convex-dev%2Fsharded-counter)
 
+**Note: Convex Components are currently in beta.**
+
+<!-- START: Include on https://convex.dev/components -->
+
 This component adds counters to Convex. It acts as a key-value store from
 string to number, with sharding to increase throughput when updating values.
 
@@ -11,7 +15,7 @@ and cached.
 For example, if you want to display
 [one million checkboxes](https://en.wikipedia.org/wiki/One_Million_Checkboxes)
 [on your Convex site](https://www.youtube.com/watch?v=LRUWplYoejQ), you want to
-count the checkboxes in real-time while allowing lots of the boxes to change in
+count the checkboxes in real-time while allowing a lot of the boxes to change in
 parallel.
 
 More generally, whenever you have a counter that is changing frequently, you
@@ -19,10 +23,12 @@ can use this component to keep track of it efficiently.
 
 ```ts
 export const checkBox = mutation({
-  args: {i: v.number()},
+  args: { i: v.number() },
   handler: async (ctx, args) => {
-    const checkbox = await ctx.db.query("checkboxes")
-      .withIndex("i", q=>q.eq("i", args.i)).unique();
+    const checkbox = await ctx.db
+      .query("checkboxes")
+      .withIndex("i", (q) => q.eq("i", args.i))
+      .unique();
     if (!checkbox.isChecked) {
       await ctx.db.patch(checkbox._id, { isChecked: true });
 
@@ -38,6 +44,18 @@ export const getCount = query({
   },
 });
 ```
+
+This relies on the assumption that you need to frequently modify the counter,
+but only need to read its value from a query, or infrequently in a mutation.
+If you read the count every time you modify it, you lose the sharding benefit.
+
+## Pre-requisite: Convex
+
+You'll need an existing Convex project to use the component.
+Convex is a hosted backend platform, including a database, serverless functions,
+and a ton more you can learn about [here](https://docs.convex.dev/get-started).
+
+Run `npm create convex` or follow any of the [quickstarts](https://docs.convex.dev/home) to set one up.
 
 ## Installation
 
@@ -66,11 +84,9 @@ the installed component.
 
 ```ts
 import { components } from "./_generated/api";
-import { ShardedCounter } from "@convex-dev/counter";
+import { ShardedCounter } from "@convex-dev/sharded-counter";
 
-const counter = new ShardedCounter(components.counter, {
-  ...options
-});
+const counter = new ShardedCounter(components.shardedCounter);
 ```
 
 ## Updating and reading counters
@@ -140,6 +156,9 @@ const friendCounts = new ShardedCounter<Record<Id<"users">, number>>(
   components.shardedCounter,
   { defaultShards: 1 },
 );
+
+// Decrement a user's friend count by 1
+await friendsCount.add(ctx, userId, -1);
 ```
 
 ## Backfilling an existing count
@@ -148,8 +167,12 @@ If you want to count items like documents in a table, you may already have
 documents before installing the ShardedCounter component, and these should be
 accounted for.
 
-The tricky part is making sure to merge active updates to counts with old
-values that you want to backfill.
+The easy version of this is to calculate the value once and add that value, if
+there aren't active requests happening. You can also periodically re-calculate
+the value and update the counter, if there aren't in-flight requests.
+
+The tricky part is handling requests while doing the calculation: making sure to
+merge active updates to counts with old values that you want to backfill.
 
 See example code at the bottom of
 [example/convex/example.ts](example/convex/example.ts).
@@ -158,89 +181,16 @@ Walkthrough of steps:
 
 1. Create `backfillCursor` table in schema.ts
 2. Create a new document in this table, with fields
-`{ creationTime: 0, id: "", isDone: false }`
+   `{ creationTime: 0, id: "", isDone: false }`
 3. Wherever you want to update a counter based on a document changing, wrap the
-update in a conditional, so it only gets updated if the backfill has processed
-that document. In the example, you would be changing `insertUserBeforeBackfill`
-to be implemented as `insertUserDuringBackfill`.
+   update in a conditional, so it only gets updated if the backfill has processed
+   that document. In the example, you would be changing `insertUserBeforeBackfill`
+   to be implemented as `insertUserDuringBackfill`.
 4. Define backfill functions similar to `backfillUsers` and `backfillUsersBatch`
 5. Call `backfillUsersBatch` from the dashboard.
 6. Remove the conditional when updating counters. In the example, you would be
-changing `insertUserDuringBackfill` to be implemented as
-`insertUserAfterBackfill`.
+   changing `insertUserDuringBackfill` to be implemented as
+   `insertUserAfterBackfill`.
 7. Delete the `backfillCursor` table.
 
 <!-- END: Include on https://convex.dev/components -->
-
-# 🧑‍🏫 What is Convex?
-
-[Convex](https://convex.dev) is a hosted backend platform with a
-built-in database that lets you write your
-[database schema](https://docs.convex.dev/database/schemas) and
-[server functions](https://docs.convex.dev/functions) in
-[TypeScript](https://docs.convex.dev/typescript). Server-side database
-[queries](https://docs.convex.dev/functions/query-functions) automatically
-[cache](https://docs.convex.dev/functions/query-functions#caching--reactivity) and
-[subscribe](https://docs.convex.dev/client/react#reactivity) to data, powering a
-[realtime `useQuery` hook](https://docs.convex.dev/client/react#fetching-data) in our
-[React client](https://docs.convex.dev/client/react). There are also clients for
-[Python](https://docs.convex.dev/client/python),
-[Rust](https://docs.convex.dev/client/rust),
-[ReactNative](https://docs.convex.dev/client/react-native), and
-[Node](https://docs.convex.dev/client/javascript), as well as a straightforward
-[HTTP API](https://docs.convex.dev/http-api/).
-
-The database supports
-[NoSQL-style documents](https://docs.convex.dev/database/document-storage) with
-[opt-in schema validation](https://docs.convex.dev/database/schemas),
-[relationships](https://docs.convex.dev/database/document-ids) and
-[custom indexes](https://docs.convex.dev/database/indexes/)
-(including on fields in nested objects).
-
-The
-[`query`](https://docs.convex.dev/functions/query-functions) and
-[`mutation`](https://docs.convex.dev/functions/mutation-functions) server functions have transactional,
-low latency access to the database and leverage our
-[`v8` runtime](https://docs.convex.dev/functions/runtimes) with
-[determinism guardrails](https://docs.convex.dev/functions/runtimes#using-randomness-and-time-in-queries-and-mutations)
-to provide the strongest ACID guarantees on the market:
-immediate consistency,
-serializable isolation, and
-automatic conflict resolution via
-[optimistic multi-version concurrency control](https://docs.convex.dev/database/advanced/occ) (OCC / MVCC).
-
-The [`action` server functions](https://docs.convex.dev/functions/actions) have
-access to external APIs and enable other side-effects and non-determinism in
-either our
-[optimized `v8` runtime](https://docs.convex.dev/functions/runtimes) or a more
-[flexible `node` runtime](https://docs.convex.dev/functions/runtimes#nodejs-runtime).
-
-Functions can run in the background via
-[scheduling](https://docs.convex.dev/scheduling/scheduled-functions) and
-[cron jobs](https://docs.convex.dev/scheduling/cron-jobs).
-
-Development is cloud-first, with
-[hot reloads for server function](https://docs.convex.dev/cli#run-the-convex-dev-server) editing via the
-[CLI](https://docs.convex.dev/cli),
-[preview deployments](https://docs.convex.dev/production/hosting/preview-deployments),
-[logging and exception reporting integrations](https://docs.convex.dev/production/integrations/),
-There is a
-[dashboard UI](https://docs.convex.dev/dashboard) to
-[browse and edit data](https://docs.convex.dev/dashboard/deployments/data),
-[edit environment variables](https://docs.convex.dev/production/environment-variables),
-[view logs](https://docs.convex.dev/dashboard/deployments/logs),
-[run server functions](https://docs.convex.dev/dashboard/deployments/functions), and more.
-
-There are built-in features for
-[reactive pagination](https://docs.convex.dev/database/pagination),
-[file storage](https://docs.convex.dev/file-storage),
-[reactive text search](https://docs.convex.dev/text-search),
-[vector search](https://docs.convex.dev/vector-search),
-[https endpoints](https://docs.convex.dev/functions/http-actions) (for webhooks),
-[snapshot import/export](https://docs.convex.dev/database/import-export/),
-[streaming import/export](https://docs.convex.dev/production/integrations/streaming-import-export), and
-[runtime validation](https://docs.convex.dev/database/schemas#validators) for
-[function arguments](https://docs.convex.dev/functions/args-validation) and
-[database data](https://docs.convex.dev/database/schemas#schema-validation).
-
-Everything scales automatically, and it’s [free to start](https://www.convex.dev/plans).
