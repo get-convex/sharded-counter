@@ -7,7 +7,7 @@
     "email": "support@convex.dev",
     "url": "https://github.com/get-convex/sharded-counter/issues"
   },
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "Apache-2.0",
   "keywords": [
     "convex",
@@ -22,16 +22,13 @@
     "dev": "cd example; npm run dev",
     "typecheck": "tsc --noEmit",
     "prepare": "npm run build",
-    "prepack": "node node10stubs.mjs",
-    "postpack": "node node10stubs.mjs --cleanup",
     "test": "vitest run",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:coverage": "vitest run --coverage --coverage.reporter=text"
   },
   "files": [
     "dist",
-    "src",
-    "react"
+    "src"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -56,7 +53,7 @@
     }
   },
   "peerDependencies": {
-    "convex": "^1.16.4"
+    "convex": "~1.16.5 || ~1.17.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
