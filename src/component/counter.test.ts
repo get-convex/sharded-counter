@@ -26,7 +26,7 @@ describe("counter", () => {
 
 fcTest.prop({
   updates: fc.array(fc.record({
-    v: fc.integer({ min: 0, max: 10000 }).map((i) => i / 100),
+    v: fc.integer({ min: -10000, max: 10000 }).map((i) => i / 100),
     key: fc.string(),
     shards: fc.option(fc.integer({ min: 1, max: 100 })),
   })),
@@ -40,6 +40,18 @@ fcTest.prop({
       await t.mutation(api.public.add, { name: key, count: v, shards: shards ?? undefined });
       const count = await t.query(api.public.count, { name: key });
       expect(count).toBeCloseTo(counter.get(key)!);
+    }
+    for (const [key, value] of counter.entries()) {
+      // Rebalancing keeps count the same and makes estimateCount accurate.
+      await t.mutation(api.public.rebalance, { name: key });
+      const count = await t.query(api.public.count, { name: key });
+      expect(count).toBeCloseTo(value);
+      for (let i = 1; i < 16; i++) {
+        const estimate = await t.query(api.public.estimateCount, { name: key, readFromShards: i });
+        expect(Math.abs(estimate - value)).toBeLessThanOrEqual(16);
+      }
+      const bestEstimate = await t.query(api.public.estimateCount, { name: key, readFromShards: 16 });
+      expect(bestEstimate).toBeCloseTo(value);
     }
   },
 );

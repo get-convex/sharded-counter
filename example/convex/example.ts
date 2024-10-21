@@ -2,11 +2,14 @@ import { internalMutation, query, mutation, internalAction } from "./_generated/
 import { components, internal } from "./_generated/api";
 import { ShardedCounter } from "@convex-dev/sharded-counter";
 import { v } from "convex/values";
+import { Migrations } from "@convex-dev/migrations";
 
 const counter = new ShardedCounter(components.shardedCounter, {
-  shards: { beans: 10, users: 100 },
+  shards: { beans: 10, users: 5 },
 });
 const numUsers = counter.for("users");
+
+const migrations = new Migrations(components.migrations);
 
 export const addOne = mutation({
   args: {},
@@ -19,6 +22,20 @@ export const getCount = query({
   args: {},
   handler: async (ctx, _args) => {
     return await numUsers.count(ctx);
+  },
+});
+
+export const rebalanceUsers = mutation({
+  args: {},
+  handler: async (ctx, _args) => {
+    await numUsers.rebalance(ctx);
+  },
+});
+
+export const estimateUserCount = query({
+  args: {},
+  handler: async (ctx, _args) => {
+    return await numUsers.estimateCount(ctx);
   },
 });
 
@@ -67,6 +84,26 @@ export const insertUserBeforeBackfill = internalMutation({
     await ctx.db.insert("users", { name: "Alice" });
   },
 });
+
+export const insertUserAfterBackfill = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    await ctx.db.insert("users", { name: "Alice" });
+    await counter.add(ctx, "users");
+  },
+});
+
+export const backfillOldUsersBatch = migrations.define({
+  table: "users",
+  // Filter to before the timestamp when counts started getting updated
+  // in the live path.
+  customRange: (query) => query.withIndex("by_creation_time", (q) =>
+    q.lt("_creationTime", Number(new Date("2024-10-01T16:20:00.000Z")))),
+  async migrateOne(ctx, _doc) {
+    await counter.add(ctx, "users");
+  },
+});
+export const backfillOldUsers = migrations.runner();
 
 export const insertUserDuringBackfill = internalMutation({
   args: {},
@@ -118,13 +155,5 @@ export const backfillUsers = internalAction({
       const newCursor: string = continueCursor!;
       cursor = newCursor;
     }
-  },
-});
-
-export const insertUserAfterBackfill = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    await ctx.db.insert("users", { name: "Alice" });
-    await counter.add(ctx, "users");
   },
 });

@@ -10,8 +10,9 @@ This component adds counters to Convex. It acts as a key-value store from
 string to number, with sharding to increase throughput when updating values.
 
 Since it's built on Convex, everything is automatically consistent, reactive,
-and cached. Since it's built with Components, the operations are isolated and
-increment/decrement are atomic even if run in parallel.
+and cached. Since it's built with [Components](https://convex.dev/components),
+the operations are isolated and increment/decrement are atomic even if run in
+parallel.
 
 For example, if you want to display
 [one million checkboxes](https://en.wikipedia.org/wiki/One_Million_Checkboxes)
@@ -174,6 +175,22 @@ the value and update the counter, if there aren't in-flight requests.
 
 The tricky part is handling requests while doing the calculation: making sure to
 merge active updates to counts with old values that you want to backfill.
+
+### Simple backfill: if table is append-only
+
+See example code at the bottom of
+[example/convex/example.ts](example/convex/example.ts).
+
+Walkthrough of steps:
+
+1. Change live writes to update the counter. In the example, you would be
+   changing `insertUserBeforeBackfill` to be implemented as
+   `insertUserAfterBackfill`.
+2. Write a backfill that counts documents that were created before the code from
+   (1) deployed. In the example, this would be `backfillOldUsers`.
+3. Run `backfillOldUsers` from the dashboard.
+
+### Complex backfill: if documents may be deleted
 
 See example code at the bottom of
 [example/convex/example.ts](example/convex/example.ts).
