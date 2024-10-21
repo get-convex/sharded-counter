@@ -51,16 +51,8 @@ export const rebalance = mutation({
       .collect();
     const count = counters.reduce((sum, counter) => sum + counter.value, 0);
     const shardCount = args.shards ?? DEFAULT_SHARD_COUNT;
-    const baseCount = Math.floor(count / shardCount);
-    let remainder = count - (baseCount * shardCount);
-    const extraCounts = [];
-    while (Math.abs(remainder) > 0) {
-      const nextExtra = Math.abs(remainder) >= 1 ? Math.sign(remainder) : remainder;
-      extraCounts.push(nextExtra);
-      remainder -= nextExtra;
-    }
+    const value = count / shardCount;
     for (let i = 0; i < shardCount; i++) {
-      const value = baseCount + (i < extraCounts.length ? extraCounts[i] : 0);
       const shard = counters.find((c) => c.shard === i);
       if (shard) {
         await ctx.db.patch(shard._id, { value });

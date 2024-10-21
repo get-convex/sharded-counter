@@ -97,8 +97,10 @@ Once you have a `ShardedCounter`, there are a few methods you can use to update
 the counter for a key in a mutation or action.
 
 ```ts
-await counter.add(ctx, "checkboxes"); // increment
-await counter.add(ctx, "checkboxes", -5); // decrement by 5
+await counter.add(ctx, "checkboxes", 5); // increment by 5
+await counter.inc(ctx, "checkboxes"); // increment by 1
+await counter.subtract(ctx, "checkboxes", 5); // decrement by 5
+await counter.dec(ctx, "checkboxes"); // decrement by 1
 
 const numCheckboxes = counter.for("checkboxes");
 await numCheckboxes.inc(ctx); // increment
@@ -160,8 +162,64 @@ const friendCounts = new ShardedCounter<Record<Id<"users">, number>>(
 );
 
 // Decrement a user's friend count by 1
-await friendsCount.add(ctx, userId, -1);
+await friendsCount.dec(ctx, userId);
 ```
+
+## Reducing contention on reads
+
+Reading the count with `counter.count(ctx, "checkboxes")` reads from all shards
+to get an accurate count. This takes a read dependency on all shard documents.
+
+- In a query subscription, that means any change to the counter causes the query
+  to rerun.
+- In a mutation, that means any modification to the counter causes an
+  [OCC](https://docs.convex.dev/error#1) conflict.
+
+You can reduce contention by estimating the count: read from a smaller number
+of shards and extrapolate based on the total number of shards.
+
+```ts
+const estimatedCheckboxCount = await counter.estimateCount(ctx, "checkboxes");
+```
+
+By default, this reads from a single random shard and multiplies by the total
+number of shards to form an estimate. If the counter was accumulated from many
+small `counter.inc` and `counter.dec` calls, then they should be uniformly
+distributed across the shards, so the estimate will be good.
+
+In some cases the counter will not be evenly distributed:
+
+- If the counter was accumulated from few operations
+- If some operations were `counter.add`s or `counter.subtract`s with large
+  values, because each operation only changes a single shard
+- If the number of shards changed
+
+In these cases, the count might not be evenly distributed across the shards.
+To repair such cases, you can call:
+
+```ts
+await counter.rebalance(ctx, "checkboxes");
+```
+
+Which will even out the count across shards.
+
+If you reduce the number of shards for a key, you will be left with extra shards
+that won't be written to but are still read to compute `count` accurately.
+In this case, you should also call `counter.rebalance` to delete
+the extraneous shards.
+
+NOTE: `counter.rebalance` reads and writes all shards, so it could cause
+more OCCs, and it's recommended you call it sparingly, from the Convex dashboard
+or from an infrequent cron.
+
+NOTE: counts are floats, and floating point arithmetic isn't infinitely
+precise. Even if you always add and subtract integers, you may get a fractional
+count from `counter.estimateCount`. And if you call `counter.rebalance`, you
+may get a fractional count from `counter.count`. Suppose you have three
+shards and you `counter.inc` to add one. If you rebalance, each shard will have
+`0.3333333333333333` and the count will become `0.9999999999999999`, which might
+round to `1` or might not. You can use `Math.round` to make sure your count is
+an integer.
 
 ## Backfilling an existing count
 

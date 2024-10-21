@@ -5,7 +5,7 @@ import { v } from "convex/values";
 import { Migrations } from "@convex-dev/migrations";
 
 const counter = new ShardedCounter(components.shardedCounter, {
-  shards: { beans: 10, users: 5 },
+  shards: { beans: 10, users: 3 },
 });
 const numUsers = counter.for("users");
 

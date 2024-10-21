@@ -46,12 +46,10 @@ fcTest.prop({
       await t.mutation(api.public.rebalance, { name: key });
       const count = await t.query(api.public.count, { name: key });
       expect(count).toBeCloseTo(value);
-      for (let i = 1; i < 16; i++) {
+      for (let i = 1; i <= 16; i++) {
         const estimate = await t.query(api.public.estimateCount, { name: key, readFromShards: i });
-        expect(Math.abs(estimate - value)).toBeLessThanOrEqual(16);
+        expect(estimate).toBeCloseTo(value);
       }
-      const bestEstimate = await t.query(api.public.estimateCount, { name: key, readFromShards: 16 });
-      expect(bestEstimate).toBeCloseTo(value);
     }
   },
 );
