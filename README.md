@@ -6,7 +6,8 @@ This component adds counters to Convex. It acts as a key-value store from
 string to number, with sharding to increase throughput when updating values.
 
 Since it's built on Convex, everything is automatically consistent, reactive,
-and cached.
+and cached. Since it's built with Components, the operations are isolated and
+increment/decrement are atomic even if run in parallel.
 
 For example, if you want to display
 [one million checkboxes](https://en.wikipedia.org/wiki/One_Million_Checkboxes)
