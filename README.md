@@ -165,7 +165,7 @@ const friendCounts = new ShardedCounter<Record<Id<"users">, number>>(
 await friendsCount.dec(ctx, userId);
 ```
 
-## Reducing contention on reads
+## Reduce contention on reads
 
 Reading the count with `counter.count(ctx, "checkboxes")` reads from all shards
 to get an accurate count. This takes a read dependency on all shard documents.
@@ -220,6 +220,50 @@ shards and you `counter.inc` to add one. If you rebalance, each shard will have
 `0.3333333333333333` and the count will become `0.9999999999999999`, which might
 round to `1` or might not. You can use `Math.round` to make sure your count is
 an integer.
+
+## Counting documents in a table
+
+Often you want to use a sharded counter to track how many documents are in a
+table.
+
+> If you want more than just a count, take a look at the
+> [Aggregate component](https://www.npmjs.com/package/@convex-dev/aggregate).
+
+There are three ways to go about keeping a count in sync with a table:
+
+1. Be careful to always update the aggregate in any mutation that inserts or
+   deletes from the table.
+2. \[Recommended\] Place all writes to a table in separate TypeScript functions,
+   and always call these functions from mutations instead of writing to the db
+   directly. This method is recommended, because it encapsulates the logic for
+   updating a table, while still keeping all operations explicit. For example,
+
+```ts
+// Example of a mutation that calls `insertUser`.
+export const insertPair = mutation(async (ctx) => {
+  ...
+  await insertUser(ctx, user1);
+  await insertUser(ctx, user2);
+});
+
+// All inserts to the "users" table go through this function.
+async function insertUser(ctx, user) {
+  await ctx.db.insert("users", user);
+  await counter.inc(ctx, "users");
+}
+```
+
+3. Register a Trigger, which automatically runs code when a mutation changes the
+   data in a table.
+
+```ts
+// Triggers hook up writes to the table to the ShardedCounter.
+const triggers = new Triggers<DataModel>();
+triggers.register("mytable", counter.trigger("mycounter"));
+export const mutation = customMutation(rawMutation, customCtx(triggers.wrapDB));
+```
+
+The [insertUserWithTrigger](example/convex/example.ts) mutation uses a trigger.
 
 ## Backfilling an existing count
 

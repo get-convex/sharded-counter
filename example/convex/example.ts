@@ -3,13 +3,33 @@ import { components, internal } from "./_generated/api";
 import { ShardedCounter } from "@convex-dev/sharded-counter";
 import { v } from "convex/values";
 import { Migrations } from "@convex-dev/migrations";
+import { DataModel } from "./_generated/dataModel";
+import { Triggers } from "convex-helpers/server/triggers";
+import { customCtx, customMutation } from "convex-helpers/server/customFunctions";
+
+/// Example of ShardedCounter initialization.
 
 const counter = new ShardedCounter(components.shardedCounter, {
   shards: { beans: 10, users: 3 },
 });
 const numUsers = counter.for("users");
 
+/// Other libraries the example will be using to tie `counter` to tables.
+
+// See https://www.npmjs.com/package/@convex-dev/migrations for more on this
+// component.
 const migrations = new Migrations(components.migrations);
+
+// See https://stack.convex.dev/triggers for more on this library.
+const triggers = new Triggers<DataModel>();
+triggers.register("users", counter.trigger("users"));
+export const mutationWithTriggers = customMutation(
+  mutation,
+  customCtx(triggers.wrapDB),
+);
+
+
+/// Example functions using ShardedCounter.
 
 export const addOne = mutation({
   args: {},
@@ -155,5 +175,12 @@ export const backfillUsers = internalAction({
       const newCursor: string = continueCursor!;
       cursor = newCursor;
     }
+  },
+});
+
+export const insertUserWithTrigger = mutationWithTriggers({
+  args: {},
+  handler: async (ctx, _args) => {
+    await ctx.db.insert("users", { name: "Alice" });
   },
 });

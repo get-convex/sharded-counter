@@ -1,9 +1,11 @@
 import {
+  DocumentByName,
   Expand,
   FunctionReference,
   GenericDataModel,
   GenericMutationCtx,
   GenericQueryCtx,
+  TableNamesInDataModel,
 } from "convex/server";
 import { GenericId } from "convex/values";
 import { api } from "../component/_generated/api";
@@ -186,6 +188,20 @@ export class ShardedCounter<ShardsKey extends string> {
         this.estimateCount(ctx, name, readFromShards),
     };
   }
+  trigger<
+    Ctx extends RunMutationCtx,
+    Name extends string = ShardsKey,
+  >(
+    name: Name,
+  ): Trigger<Ctx, GenericDataModel, TableNamesInDataModel<GenericDataModel>> {
+    return async (ctx, change) => {
+      if (change.operation === "insert") {
+        await this.inc(ctx, name);
+      } else if (change.operation === "delete") {
+        await this.dec(ctx, name);
+      }
+    };
+  }
   private shardsForKey<Name extends string = ShardsKey>(name: Name) {
     const explicitShards = this.options?.shards?.[name as string as ShardsKey];
     return explicitShards ?? this.options?.defaultShards;
@@ -193,6 +209,31 @@ export class ShardedCounter<ShardsKey extends string> {
 }
 
 /* Type utils follow */
+
+export type Trigger<
+  Ctx,
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>,
+> = (ctx: Ctx, change: Change<DataModel, TableName>) => Promise<void>;
+
+export type Change<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>,
+> = {
+  id: GenericId<TableName>;
+} & ({
+  operation: "insert";
+  oldDoc: null
+  newDoc: DocumentByName<DataModel, TableName>;
+} | {
+  operation: "update";
+  oldDoc: DocumentByName<DataModel, TableName>;
+  newDoc: DocumentByName<DataModel, TableName>;
+} | {
+  operation: "delete";
+  oldDoc: DocumentByName<DataModel, TableName>;
+  newDoc: null;
+});
 
 type RunQueryCtx = {
   runQuery: GenericQueryCtx<GenericDataModel>["runQuery"];
