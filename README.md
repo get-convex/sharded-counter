@@ -183,9 +183,16 @@ const estimatedCheckboxCount = await counter.estimateCount(ctx, "checkboxes");
 ```
 
 By default, this reads from a single random shard and multiplies by the total
-number of shards to form an estimate. If the counter was accumulated from many
+number of shards to form an estimate. You can improve the estimate by reading
+from more shards, at the cost of more contention:
+
+```ts
+const betterEstimatedCheckboxCount = await counter.estimateCount(ctx, "checkboxes", 3);
+```
+
+If the counter was accumulated from many
 small `counter.inc` and `counter.dec` calls, then they should be uniformly
-distributed across the shards, so the estimate will be good.
+distributed across the shards, so estimated counts will be accurate.
 
 In some cases the counter will not be evenly distributed:
 
@@ -203,9 +210,11 @@ await counter.rebalance(ctx, "checkboxes");
 
 Which will even out the count across shards.
 
-If you reduce the number of shards for a key, you will be left with extra shards
-that won't be written to but are still read to compute `count` accurately.
-In this case, you should also call `counter.rebalance` to delete
+You may change the number of shards for a key, by changing the second argument
+to the `ShardedCounter` constructor. If you decrease the number of shards,
+you will be left with extra shards that won't be written to but are still
+read when computing `count`.
+In this case, you should call `counter.rebalance` to delete
 the extraneous shards.
 
 NOTE: `counter.rebalance` reads and writes all shards, so it could cause
@@ -214,12 +223,11 @@ or from an infrequent cron.
 
 NOTE: counts are floats, and floating point arithmetic isn't infinitely
 precise. Even if you always add and subtract integers, you may get a fractional
-count from `counter.estimateCount`. And if you call `counter.rebalance`, you
-may get a fractional count from `counter.count`. Suppose you have three
-shards and you `counter.inc` to add one. If you rebalance, each shard will have
-`0.3333333333333333` and the count will become `0.9999999999999999`, which might
-round to `1` or might not. You can use `Math.round` to make sure your count is
-an integer.
+counts, especially if you use `estimateCount` or `rebalance`.
+Values distributed across shards may be added in different combinations, and
+[floating point arithmetic isn't associative](https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html).
+You can use `Math.round` to ensure your final count is an integer, if
+desired.
 
 ## Counting documents in a table
 
@@ -253,7 +261,8 @@ async function insertUser(ctx, user) {
 }
 ```
 
-3. Register a Trigger, which automatically runs code when a mutation changes the
+3. Register a [Trigger]((https://www.npmjs.com/package/convex-helpers#triggers)),
+   which automatically runs code when a mutation changes the
    data in a table.
 
 ```ts
