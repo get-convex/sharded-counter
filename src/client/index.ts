@@ -31,8 +31,8 @@ export class ShardedCounter<ShardsKey extends string> {
    *   keys not in `options.shards`.
    */
   constructor(
-    public component: UseApi<typeof api>,
-    public options?: { shards?: Record<ShardsKey, number>; defaultShards?: number }
+    private component: UseApi<typeof api>,
+    private options?: { shards?: Record<ShardsKey, number>; defaultShards?: number }
   ) {}
   /**
    * Increase the counter for key `name` by `count`.
