@@ -2,11 +2,34 @@ import { internalMutation, query, mutation, internalAction } from "./_generated/
 import { components, internal } from "./_generated/api";
 import { ShardedCounter } from "@convex-dev/sharded-counter";
 import { v } from "convex/values";
+import { Migrations } from "@convex-dev/migrations";
+import { DataModel } from "./_generated/dataModel";
+import { Triggers } from "convex-helpers/server/triggers";
+import { customCtx, customMutation } from "convex-helpers/server/customFunctions";
+
+/// Example of ShardedCounter initialization.
 
 const counter = new ShardedCounter(components.shardedCounter, {
-  shards: { beans: 10, users: 100 },
+  shards: { beans: 10, users: 3 },
 });
 const numUsers = counter.for("users");
+
+/// Other libraries the example will be using to tie `counter` to tables.
+
+// See https://www.npmjs.com/package/@convex-dev/migrations for more on this
+// component.
+const migrations = new Migrations(components.migrations);
+
+// See https://stack.convex.dev/triggers for more on this library.
+const triggers = new Triggers<DataModel>();
+triggers.register("users", counter.trigger("users"));
+export const mutationWithTriggers = customMutation(
+  mutation,
+  customCtx(triggers.wrapDB),
+);
+
+
+/// Example functions using ShardedCounter.
 
 export const addOne = mutation({
   args: {},
@@ -19,6 +42,20 @@ export const getCount = query({
   args: {},
   handler: async (ctx, _args) => {
     return await numUsers.count(ctx);
+  },
+});
+
+export const rebalanceUsers = mutation({
+  args: {},
+  handler: async (ctx, _args) => {
+    await numUsers.rebalance(ctx);
+  },
+});
+
+export const estimateUserCount = query({
+  args: {},
+  handler: async (ctx, _args) => {
+    return await numUsers.estimateCount(ctx);
   },
 });
 
@@ -67,6 +104,26 @@ export const insertUserBeforeBackfill = internalMutation({
     await ctx.db.insert("users", { name: "Alice" });
   },
 });
+
+export const insertUserAfterBackfill = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    await ctx.db.insert("users", { name: "Alice" });
+    await counter.add(ctx, "users");
+  },
+});
+
+export const backfillOldUsersBatch = migrations.define({
+  table: "users",
+  // Filter to before the timestamp when counts started getting updated
+  // in the live path.
+  customRange: (query) => query.withIndex("by_creation_time", (q) =>
+    q.lt("_creationTime", Number(new Date("2024-10-01T16:20:00.000Z")))),
+  async migrateOne(ctx, _doc) {
+    await counter.add(ctx, "users");
+  },
+});
+export const backfillOldUsers = migrations.runner();
 
 export const insertUserDuringBackfill = internalMutation({
   args: {},
@@ -121,10 +178,9 @@ export const backfillUsers = internalAction({
   },
 });
 
-export const insertUserAfterBackfill = internalMutation({
+export const insertUserWithTrigger = mutationWithTriggers({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx, _args) => {
     await ctx.db.insert("users", { name: "Alice" });
-    await counter.add(ctx, "users");
   },
 });

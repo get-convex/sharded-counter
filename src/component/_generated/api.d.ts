@@ -1,5 +1,3 @@
-/* prettier-ignore-start */
-
 /* eslint-disable */
 /**
  * Generated `api` utility.
@@ -37,6 +35,18 @@ export type Mounts = {
       null
     >;
     count: FunctionReference<"query", "public", { name: string }, number>;
+    estimateCount: FunctionReference<
+      "query",
+      "public",
+      { name: string; readFromShards?: number; shards?: number },
+      any
+    >;
+    rebalance: FunctionReference<
+      "mutation",
+      "public",
+      { name: string; shards?: number },
+      any
+    >;
   };
 };
 // For now fullApiWithMounts is only fullApi which provides
@@ -54,5 +64,3 @@ export declare const internal: FilterApi<
 >;
 
 export declare const components: {};
-
-/* prettier-ignore-end */

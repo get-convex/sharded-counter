@@ -10,7 +10,9 @@ This component adds counters to Convex. It acts as a key-value store from
 string to number, with sharding to increase throughput when updating values.
 
 Since it's built on Convex, everything is automatically consistent, reactive,
-and cached.
+and cached. Since it's built with [Components](https://convex.dev/components),
+the operations are isolated and increment/decrement are atomic even if run in
+parallel.
 
 For example, if you want to display
 [one million checkboxes](https://en.wikipedia.org/wiki/One_Million_Checkboxes)
@@ -95,8 +97,10 @@ Once you have a `ShardedCounter`, there are a few methods you can use to update
 the counter for a key in a mutation or action.
 
 ```ts
-await counter.add(ctx, "checkboxes"); // increment
-await counter.add(ctx, "checkboxes", -5); // decrement by 5
+await counter.add(ctx, "checkboxes", 5); // increment by 5
+await counter.inc(ctx, "checkboxes"); // increment by 1
+await counter.subtract(ctx, "checkboxes", 5); // decrement by 5
+await counter.dec(ctx, "checkboxes"); // decrement by 1
 
 const numCheckboxes = counter.for("checkboxes");
 await numCheckboxes.inc(ctx); // increment
@@ -158,8 +162,117 @@ const friendCounts = new ShardedCounter<Record<Id<"users">, number>>(
 );
 
 // Decrement a user's friend count by 1
-await friendsCount.add(ctx, userId, -1);
+await friendsCount.dec(ctx, userId);
 ```
+
+## Reduce contention on reads
+
+Reading the count with `counter.count(ctx, "checkboxes")` reads from all shards
+to get an accurate count. This takes a read dependency on all shard documents.
+
+- In a query subscription, that means any change to the counter causes the query
+  to rerun.
+- In a mutation, that means any modification to the counter causes an
+  [OCC](https://docs.convex.dev/error#1) conflict.
+
+You can reduce contention by estimating the count: read from a smaller number
+of shards and extrapolate based on the total number of shards.
+
+```ts
+const estimatedCheckboxCount = await counter.estimateCount(ctx, "checkboxes");
+```
+
+By default, this reads from a single random shard and multiplies by the total
+number of shards to form an estimate. You can improve the estimate by reading
+from more shards, at the cost of more contention:
+
+```ts
+const betterEstimatedCheckboxCount = await counter.estimateCount(ctx, "checkboxes", 3);
+```
+
+If the counter was accumulated from many
+small `counter.inc` and `counter.dec` calls, then they should be uniformly
+distributed across the shards, so estimated counts will be accurate.
+
+In some cases the counter will not be evenly distributed:
+
+- If the counter was accumulated from few operations
+- If some operations were `counter.add`s or `counter.subtract`s with large
+  values, because each operation only changes a single shard
+- If the number of shards changed
+
+In these cases, the count might not be evenly distributed across the shards.
+To repair such cases, you can call:
+
+```ts
+await counter.rebalance(ctx, "checkboxes");
+```
+
+Which will even out the count across shards.
+
+You may change the number of shards for a key, by changing the second argument
+to the `ShardedCounter` constructor. If you decrease the number of shards,
+you will be left with extra shards that won't be written to but are still
+read when computing `count`.
+In this case, you should call `counter.rebalance` to delete
+the extraneous shards.
+
+NOTE: `counter.rebalance` reads and writes all shards, so it could cause
+more OCCs, and it's recommended you call it sparingly, from the Convex dashboard
+or from an infrequent cron.
+
+NOTE: counts are floats, and floating point arithmetic isn't infinitely
+precise. Even if you always add and subtract integers, you may get a fractional
+counts, especially if you use `estimateCount` or `rebalance`.
+Values distributed across shards may be added in different combinations, and
+[floating point arithmetic isn't associative](https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html).
+You can use `Math.round` to ensure your final count is an integer, if
+desired.
+
+## Counting documents in a table
+
+Often you want to use a sharded counter to track how many documents are in a
+table.
+
+> If you want more than just a count, take a look at the
+> [Aggregate component](https://www.npmjs.com/package/@convex-dev/aggregate).
+
+There are three ways to go about keeping a count in sync with a table:
+
+1. Be careful to always update the aggregate in any mutation that inserts or
+   deletes from the table.
+2. \[Recommended\] Place all writes to a table in separate TypeScript functions,
+   and always call these functions from mutations instead of writing to the db
+   directly. This method is recommended, because it encapsulates the logic for
+   updating a table, while still keeping all operations explicit. For example,
+
+```ts
+// Example of a mutation that calls `insertUser`.
+export const insertPair = mutation(async (ctx) => {
+  ...
+  await insertUser(ctx, user1);
+  await insertUser(ctx, user2);
+});
+
+// All inserts to the "users" table go through this function.
+async function insertUser(ctx, user) {
+  await ctx.db.insert("users", user);
+  await counter.inc(ctx, "users");
+}
+```
+
+3. Register a [Trigger]((https://www.npmjs.com/package/convex-helpers#triggers)),
+   which automatically runs code when a mutation changes the
+   data in a table.
+
+```ts
+// Triggers hook up writes to the table to the ShardedCounter.
+const triggers = new Triggers<DataModel>();
+triggers.register("mytable", counter.trigger("mycounter"));
+export const mutation = customMutation(rawMutation, customCtx(triggers.wrapDB));
+```
+
+The [insertUserWithTrigger](example/convex/example.ts) mutation uses a trigger.
 
 ## Backfilling an existing count
 
@@ -173,6 +286,22 @@ the value and update the counter, if there aren't in-flight requests.
 
 The tricky part is handling requests while doing the calculation: making sure to
 merge active updates to counts with old values that you want to backfill.
+
+### Simple backfill: if table is append-only
+
+See example code at the bottom of
+[example/convex/example.ts](example/convex/example.ts).
+
+Walkthrough of steps:
+
+1. Change live writes to update the counter. In the example, you would be
+   changing `insertUserBeforeBackfill` to be implemented as
+   `insertUserAfterBackfill`.
+2. Write a backfill that counts documents that were created before the code from
+   (1) deployed. In the example, this would be `backfillOldUsers`.
+3. Run `backfillOldUsers` from the dashboard.
+
+### Complex backfill: if documents may be deleted
 
 See example code at the bottom of
 [example/convex/example.ts](example/convex/example.ts).

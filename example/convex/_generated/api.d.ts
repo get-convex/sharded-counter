@@ -1,5 +1,3 @@
-/* prettier-ignore-start */
-
 /* eslint-disable */
 /**
  * Generated `api` utility.
@@ -49,8 +47,109 @@ export declare const components: {
         null
       >;
       count: FunctionReference<"query", "internal", { name: string }, number>;
+      estimateCount: FunctionReference<
+        "query",
+        "internal",
+        { name: string; readFromShards?: number; shards?: number },
+        any
+      >;
+      rebalance: FunctionReference<
+        "mutation",
+        "internal",
+        { name: string; shards?: number },
+        any
+      >;
+    };
+  };
+  migrations: {
+    public: {
+      cancel: FunctionReference<
+        "mutation",
+        "internal",
+        { name: string },
+        {
+          batchSize?: number;
+          cursor?: string | null;
+          isDone: boolean;
+          latestStart?: number;
+          name: string;
+          next?: Array<string>;
+          processed: number;
+          workerStatus?:
+            | "pending"
+            | "inProgress"
+            | "success"
+            | "failed"
+            | "canceled";
+        }
+      >;
+      cancelAll: FunctionReference<
+        "mutation",
+        "internal",
+        { sinceTs?: number },
+        Array<{
+          batchSize?: number;
+          cursor?: string | null;
+          isDone: boolean;
+          latestStart?: number;
+          name: string;
+          next?: Array<string>;
+          processed: number;
+          workerStatus?:
+            | "pending"
+            | "inProgress"
+            | "success"
+            | "failed"
+            | "canceled";
+        }>
+      >;
+      getStatus: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; migrationNames?: Array<string> },
+        Array<{
+          batchSize?: number;
+          cursor?: string | null;
+          isDone: boolean;
+          latestStart?: number;
+          name: string;
+          next?: Array<string>;
+          processed: number;
+          workerStatus?:
+            | "pending"
+            | "inProgress"
+            | "success"
+            | "failed"
+            | "canceled";
+        }>
+      >;
+      runMigration: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          batchSize?: number;
+          cursor?: string | null;
+          dryRun: boolean;
+          fnHandle: string;
+          name: string;
+          next?: Array<{ fnHandle: string; name: string }>;
+        },
+        {
+          batchSize?: number;
+          cursor?: string | null;
+          isDone: boolean;
+          latestStart?: number;
+          name: string;
+          next?: Array<string>;
+          processed: number;
+          workerStatus?:
+            | "pending"
+            | "inProgress"
+            | "success"
+            | "failed"
+            | "canceled";
+        }
+      >;
     };
   };
 };
-
-/* prettier-ignore-end */
