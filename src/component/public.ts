@@ -5,7 +5,7 @@ export const DEFAULT_SHARD_COUNT = 16;
 
 export const add = mutation({
   args: {
-    name: v.string(),
+    name: v.any(),
     count: v.number(),
     shards: v.optional(v.number()),
   },
@@ -31,7 +31,7 @@ export const add = mutation({
 });
 
 export const count = query({
-  args: { name: v.string() },
+  args: { name: v.any() },
   returns: v.number(),
   handler: async (ctx, args) => {
     const counters = await ctx.db
@@ -43,7 +43,7 @@ export const count = query({
 });
 
 export const rebalance = mutation({
-  args: { name: v.string(), shards: v.optional(v.number()) },
+  args: { name: v.any(), shards: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const counters = await ctx.db
       .query("counters")
@@ -73,7 +73,7 @@ export const rebalance = mutation({
 
 export const estimateCount = query({
   args: {
-    name: v.string(),
+    name: v.any(),
     readFromShards: v.optional(v.number()),
     shards: v.optional(v.number()),
   },

@@ -7,7 +7,7 @@
 <!-- START: Include on https://convex.dev/components -->
 
 This component adds counters to Convex. It acts as a key-value store from
-string to number, with sharding to increase throughput when updating values.
+key to number, with sharding to increase throughput when updating values.
 
 Since it's built on Convex, everything is automatically consistent, reactive,
 and cached. Since it's built with [Components](https://convex.dev/components),
@@ -143,7 +143,7 @@ const counter = new ShardedCounter(components.shardedCounter, {
 Or by setting a default that applies to all keys not specified in `shards`:
 
 ```ts
-const counter = new ShardedCounter(components.shardedCounter, {
+const counter = new ShardedCounter<string>(components.shardedCounter, {
   shards: { checkboxes: 100 },
   defaultShards: 20,
 });
@@ -151,12 +151,19 @@ const counter = new ShardedCounter(components.shardedCounter, {
 
 The default number of shards if none is specified is 16.
 
-Note your keys can be a subtype of string. e.g. if you want to store a count of
+## Keys can be anything
+
+The keys for your counters can be string literals,
+a subtype of string, or any arbitrary
+[Convex value](https://docs.convex.dev/database/types). You can enforce correct
+key usage with the generic Typescript type parameter.
+
+For example, if you want to store a count of
 friends for each user, and you don't care about throughput for a single user,
 you would declare ShardedCounter like so:
 
 ```ts
-const friendCounts = new ShardedCounter<Record<Id<"users">, number>>(
+const friendCounts = new ShardedCounter<Id<"users">>(
   components.shardedCounter,
   { defaultShards: 1 },
 );
@@ -164,6 +171,31 @@ const friendCounts = new ShardedCounter<Record<Id<"users">, number>>(
 // Decrement a user's friend count by 1
 await friendsCount.dec(ctx, userId);
 ```
+
+If you want to store two counts for each user: a count of followers and a count
+of followees, you can use a tuple key:
+
+```ts
+const followCounts = new ShardedCounter<[Id<"users">, "followers" | "follows"]>(
+  components.shardedCounter,
+  { defaultShards: 3 },
+);
+
+// Create a follower relationship. Note Convex mutations are atomic so don't
+// worry about the counts getting out of sync.
+await followCounts.inc(ctx, [follower, "follows"]);
+await followCounts.inc(ctx, [followee, "followers"]);
+```
+
+You can also install the component multiple times to count different things:
+
+```ts
+app.use(shardedCounter, { name: "friendCounter" });
+app.use(shardedCounter, { name: "followCounter" });
+```
+
+See [example/convex/nested.ts](example/convex/nested.ts) for this example in
+practice.
 
 ## Reduce contention on reads
 

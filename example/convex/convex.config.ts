@@ -4,6 +4,7 @@ import migrations from "@convex-dev/migrations/convex.config";
 
 const app = defineApp();
 app.use(shardedCounter);
+app.use(shardedCounter, { name: "nestedCounter" });
 app.use(migrations);
 
 export default app;
