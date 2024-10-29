@@ -9,7 +9,7 @@ import { customCtx, customMutation } from "convex-helpers/server/customFunctions
 
 /// Example of ShardedCounter initialization.
 
-const counter = new ShardedCounter(components.shardedCounter, {
+const counter = new ShardedCounter<"beans" | "users" | "accomplishments">(components.shardedCounter, {
   shards: { beans: 10, users: 3 },
 });
 const numUsers = counter.for("users");

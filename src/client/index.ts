@@ -7,14 +7,14 @@ import {
   GenericQueryCtx,
   TableNamesInDataModel,
 } from "convex/server";
-import { GenericId } from "convex/values";
+import { GenericId, Value as ConvexValue } from "convex/values";
 import { api } from "../component/_generated/api";
 
 /**
  * A sharded counter is a map from string -> counter, where each counter can
  * be incremented or decremented atomically.
  */
-export class ShardedCounter<ShardsKey extends string> {
+export class ShardedCounter<ShardsKey extends ConvexValue> {
   /**
    * A sharded counter is a map from string -> counter, where each counter can
    * be incremented or decremented.
@@ -32,7 +32,7 @@ export class ShardedCounter<ShardsKey extends string> {
    */
   constructor(
     private component: UseApi<typeof api>,
-    private options?: { shards?: Record<ShardsKey, number>; defaultShards?: number }
+    private options?: { shards?: Partial<Record<ShardsKey & string, number>>; defaultShards?: number }
   ) {}
   /**
    * Increase the counter for key `name` by `count`.
@@ -41,7 +41,7 @@ export class ShardedCounter<ShardsKey extends string> {
    * @param name The key to update the counter for.
    * @param count The amount to increment the counter by. Defaults to 1.
    */
-  async add<Name extends string = ShardsKey>(
+  async add<Name extends ShardsKey>(
     ctx: RunMutationCtx,
     name: Name,
     count: number = 1
@@ -55,7 +55,7 @@ export class ShardedCounter<ShardsKey extends string> {
   /**
    * Decrease the counter for key `name` by `count`.
    */
-  async subtract<Name extends string = ShardsKey>(
+  async subtract<Name extends ShardsKey>(
     ctx: RunMutationCtx,
     name: Name,
     count: number = 1
@@ -65,13 +65,13 @@ export class ShardedCounter<ShardsKey extends string> {
   /**
    * Increment the counter for key `name` by 1.
    */
-  async inc<Name extends string = ShardsKey>(ctx: RunMutationCtx, name: Name) {
+  async inc<Name extends ShardsKey>(ctx: RunMutationCtx, name: Name) {
     return this.add(ctx, name, 1);
   }
   /**
    * Decrement the counter for key `name` by 1.
    */
-  async dec<Name extends string = ShardsKey>(ctx: RunMutationCtx, name: Name) {
+  async dec<Name extends ShardsKey>(ctx: RunMutationCtx, name: Name) {
     return this.add(ctx, name, -1);
   }
   /**
@@ -80,7 +80,7 @@ export class ShardedCounter<ShardsKey extends string> {
    * NOTE: this reads from all shards. If used in a mutation, it will contend
    * with all mutations that update the counter for this key.
    */
-  async count<Name extends string = ShardsKey>(
+  async count<Name extends ShardsKey>(
     ctx: RunQueryCtx,
     name: Name
   ) {
@@ -98,7 +98,7 @@ export class ShardedCounter<ShardsKey extends string> {
    * This operation reads and writes all shards, so it can cause contention if
    * called too often.
    */
-  async rebalance<Name extends string = ShardsKey>(
+  async rebalance<Name extends ShardsKey>(
     ctx: RunMutationCtx,
     name: Name,
   ) {
@@ -118,7 +118,7 @@ export class ShardedCounter<ShardsKey extends string> {
    * 
    * Use this to reduce contention when reading the counter.
    */
-  async estimateCount<Name extends string = ShardsKey>(
+  async estimateCount<Name extends ShardsKey>(
     ctx: RunQueryCtx,
     name: Name,
     readFromShards: number = 1,
@@ -144,7 +144,7 @@ export class ShardedCounter<ShardsKey extends string> {
    * });
    * ```
    */
-  for<Name extends string = ShardsKey>(name: Name) {
+  for<Name extends ShardsKey>(name: Name) {
     return {
       /**
        * Add `count` to the counter.
@@ -190,7 +190,7 @@ export class ShardedCounter<ShardsKey extends string> {
   }
   trigger<
     Ctx extends RunMutationCtx,
-    Name extends string = ShardsKey,
+    Name extends ShardsKey,
   >(
     name: Name,
   ): Trigger<Ctx, GenericDataModel, TableNamesInDataModel<GenericDataModel>> {
@@ -202,8 +202,8 @@ export class ShardedCounter<ShardsKey extends string> {
       }
     };
   }
-  private shardsForKey<Name extends string = ShardsKey>(name: Name) {
-    const explicitShards = this.options?.shards?.[name as string as ShardsKey];
+  private shardsForKey<Name extends ShardsKey>(name: Name) {
+    const explicitShards = this.options?.shards?.[name as unknown as string & ShardsKey];
     return explicitShards ?? this.options?.defaultShards;
   }
 }

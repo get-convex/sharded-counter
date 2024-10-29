@@ -9,6 +9,7 @@
  */
 
 import type * as example from "../example.js";
+import type * as nested from "../nested.js";
 
 import type {
   ApiFromModules,
@@ -25,6 +26,7 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   example: typeof example;
+  nested: typeof nested;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 
@@ -43,20 +45,43 @@ export declare const components: {
       add: FunctionReference<
         "mutation",
         "internal",
-        { count: number; name: string; shards?: number },
+        { count: number; name: any; shards?: number },
         null
       >;
-      count: FunctionReference<"query", "internal", { name: string }, number>;
+      count: FunctionReference<"query", "internal", { name: any }, number>;
       estimateCount: FunctionReference<
         "query",
         "internal",
-        { name: string; readFromShards?: number; shards?: number },
+        { name: any; readFromShards?: number; shards?: number },
         any
       >;
       rebalance: FunctionReference<
         "mutation",
         "internal",
-        { name: string; shards?: number },
+        { name: any; shards?: number },
+        any
+      >;
+    };
+  };
+  nestedCounter: {
+    public: {
+      add: FunctionReference<
+        "mutation",
+        "internal",
+        { count: number; name: any; shards?: number },
+        null
+      >;
+      count: FunctionReference<"query", "internal", { name: any }, number>;
+      estimateCount: FunctionReference<
+        "query",
+        "internal",
+        { name: any; readFromShards?: number; shards?: number },
+        any
+      >;
+      rebalance: FunctionReference<
+        "mutation",
+        "internal",
+        { name: any; shards?: number },
         any
       >;
     };
