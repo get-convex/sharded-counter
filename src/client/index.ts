@@ -14,7 +14,7 @@ import { api } from "../component/_generated/api";
  * A sharded counter is a map from string -> counter, where each counter can
  * be incremented or decremented atomically.
  */
-export class ShardedCounter<ShardsKey extends ConvexValue> {
+export class ShardedCounter<ShardsKey extends ConvexValue = string> {
   /**
    * A sharded counter is a map from string -> counter, where each counter can
    * be incremented or decremented.
