@@ -22,10 +22,11 @@ describe("nested sharded counter", () => {
       return Promise.all([
         ctx.db.insert("users", { name: "1" }),
         ctx.db.insert("users", { name: "2" }),
-        ctx.db.insert("users", { name: "3" }),
       ]);
     });
     await t.mutation(api.nested.addFollower, { follower: users[0], followee: users[1] });
     expect(await t.query(api.nested.countFollows, { user: users[0] })).toStrictEqual(1);
+    expect(await t.query(api.nested.countFollowers, { user: users[0] })).toStrictEqual(0);
+    expect(await t.query(api.nested.countFollowers, { user: users[1] })).toStrictEqual(1);
   })
 });
