@@ -17,9 +17,9 @@ const nestedCounter = new ShardedCounter<[Id<"users">, "follows" | "followers"]>
 );
 
 export const addFollower = mutation({
-  args: { follower: v.id("users"), follows: v.id("users") },
-  handler: async (ctx, { follower, follows }) => {
-    await nestedCounter.inc(ctx, [follows, "followers"]);
+  args: { follower: v.id("users"), followee: v.id("users") },
+  handler: async (ctx, { follower, followee }) => {
+    await nestedCounter.inc(ctx, [followee, "followers"]);
     await nestedCounter.inc(ctx, [follower, "follows"]);
   },
 });
