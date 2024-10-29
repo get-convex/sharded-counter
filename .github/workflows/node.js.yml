@@ -13,8 +13,8 @@ jobs:
       uses: actions/setup-node@v4
       with:
         cache-dependency-path: |
-          example/package-lock.json
-          package-lock.json
+          example/package.json
+          package.json
         node-version: '18.x'
         cache: 'npm'
     - run: npm i
