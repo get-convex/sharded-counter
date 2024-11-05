@@ -11,5 +11,9 @@ export default defineSchema(
       id: v.string(),
       isDone: v.boolean(),
     }),
+    checkboxes: defineTable({
+      idx: v.number(),
+      boxes: v.bytes(),
+    }).index("idx", ["idx"]),
   },
 );
