@@ -4,7 +4,7 @@
   "type": "module",
   "version": "0.0.0",
   "scripts": {
-    "dev:backend": "convex dev --live-component-sources",
+    "dev:backend": "convex dev --live-component-sources --live-component-sources",
     "dev:frontend": "vite",
     "dev": "npm-run-all --parallel dev:backend dev:frontend",
     "logs": "convex logs",

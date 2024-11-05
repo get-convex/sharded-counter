@@ -96,31 +96,6 @@ export const toggle = mutation({
   handler: toggleHandler,
 });
 
-export const seed = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const boxes = await ctx.db
-      .query("checkboxes")
-      .withIndex("idx")
-      .order("asc")
-      .collect();
-    // Clear the table.
-    for (const box of boxes) {
-      await ctx.db.delete(box._id);
-    }
-
-    const bytes = new Uint8Array(BOXES_PER_DOCUMENT / 8);
-
-    // Reset the table.
-    for (let i = 0; i < NUM_DOCUMENTS; i++) {
-      await ctx.db.insert("checkboxes", {
-        idx: i,
-        boxes: bytes.buffer,
-      });
-    }
-  },
-});
-
 export const toggleRandom = internalMutation({
   args: {},
   handler: async (ctx) => {
