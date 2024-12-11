@@ -18,13 +18,13 @@ export class ShardedCounter<ShardsKey extends string> {
   /**
    * A sharded counter is a map from string -> counter, where each counter can
    * be incremented or decremented.
-   * 
+   *
    * The counter is sharded into multiple documents to allow for higher
    * throughput of updates. The default number of shards is 16.
-   * 
+   *
    * - More shards => higher throughput of updates.
    * - Fewer shards => lower latency when querying the counter.
-   * 
+   *
    * @param options.shards The number of shards for each counter, for fixed
    *   keys.
    * @param options.defaultShards The number of shards for each counter, for
@@ -37,14 +37,14 @@ export class ShardedCounter<ShardsKey extends string> {
   /**
    * Increase the counter for key `name` by `count`.
    * If `count` is negative, the counter will decrease.
-   * 
+   *
    * @param name The key to update the counter for.
    * @param count The amount to increment the counter by. Defaults to 1.
    */
   async add<Name extends string = ShardsKey>(
     ctx: RunMutationCtx,
     name: Name,
-    count: number = 1
+    count: number = 1,
   ) {
     return ctx.runMutation(this.component.public.add, {
       name,
@@ -52,49 +52,51 @@ export class ShardedCounter<ShardsKey extends string> {
       shards: this.shardsForKey(name),
     });
   }
+
   /**
    * Decrease the counter for key `name` by `count`.
    */
   async subtract<Name extends string = ShardsKey>(
     ctx: RunMutationCtx,
     name: Name,
-    count: number = 1
+    count: number = 1,
   ) {
     return this.add(ctx, name, -count);
   }
+
   /**
    * Increment the counter for key `name` by 1.
    */
   async inc<Name extends string = ShardsKey>(ctx: RunMutationCtx, name: Name) {
     return this.add(ctx, name, 1);
   }
+
   /**
    * Decrement the counter for key `name` by 1.
    */
   async dec<Name extends string = ShardsKey>(ctx: RunMutationCtx, name: Name) {
     return this.add(ctx, name, -1);
   }
+
   /**
    * Gets the counter for key `name`.
    *
    * NOTE: this reads from all shards. If used in a mutation, it will contend
    * with all mutations that update the counter for this key.
    */
-  async count<Name extends string = ShardsKey>(
-    ctx: RunQueryCtx,
-    name: Name
-  ) {
+  async count<Name extends string = ShardsKey>(ctx: RunQueryCtx, name: Name) {
     return ctx.runQuery(this.component.public.count, { name });
   }
+
   /**
    * Redistribute counts evenly across the counter's shards.
-   * 
+   *
    * If there were more shards for this counter at some point, those shards
    * will be removed.
-   * 
+   *
    * If there were fewer shards for this counter, or if the random distribution
    * of counts is uneven, the counts will be redistributed evenly.
-   * 
+   *
    * This operation reads and writes all shards, so it can cause contention if
    * called too often.
    */
@@ -107,15 +109,16 @@ export class ShardedCounter<ShardsKey extends string> {
       shards: this.shardsForKey(name),
     });
   }
+
   /**
    * Estimate the count of a counter by only reading from a subset of shards,
    * and extrapolating the total count.
-   * 
+   *
    * After a `rebalance`, or if there were a lot of data points to yield a
    * random distribution across shards, this should be a good approximation of
    * the total count. If there are few data points, which are not evenly
    * distributed across shards, this will be a poor approximation.
-   * 
+   *
    * Use this to reduce contention when reading the counter.
    */
   async estimateCount<Name extends string = ShardsKey>(
@@ -166,14 +169,14 @@ export class ShardedCounter<ShardsKey extends string> {
       dec: async (ctx: RunMutationCtx) => this.add(ctx, name, -1),
       /**
        * Get the current value of the counter.
-       * 
+       *
        * NOTE: this reads from all shards. If used in a mutation, it will
        * contend with all mutations that update the counter for this key.
        */
       count: async (ctx: RunQueryCtx) => this.count(ctx, name),
       /**
        * Redistribute counts evenly across the counter's shards.
-       * 
+       *
        * This operation reads and writes all shards, so it can cause contention
        * if called too often.
        */
@@ -181,17 +184,14 @@ export class ShardedCounter<ShardsKey extends string> {
       /**
        * Estimate the counter by only reading from a subset of shards,
        * and extrapolating the total count.
-       * 
+       *
        * Use this to reduce contention when reading the counter.
        */
       estimateCount: async (ctx: RunQueryCtx, readFromShards: number = 1) =>
         this.estimateCount(ctx, name, readFromShards),
     };
   }
-  trigger<
-    Ctx extends RunMutationCtx,
-    Name extends string = ShardsKey,
-  >(
+  trigger<Ctx extends RunMutationCtx, Name extends string = ShardsKey>(
     name: Name,
   ): Trigger<Ctx, GenericDataModel, TableNamesInDataModel<GenericDataModel>> {
     return async (ctx, change) => {
@@ -221,19 +221,23 @@ export type Change<
   TableName extends TableNamesInDataModel<DataModel>,
 > = {
   id: GenericId<TableName>;
-} & ({
-  operation: "insert";
-  oldDoc: null
-  newDoc: DocumentByName<DataModel, TableName>;
-} | {
-  operation: "update";
-  oldDoc: DocumentByName<DataModel, TableName>;
-  newDoc: DocumentByName<DataModel, TableName>;
-} | {
-  operation: "delete";
-  oldDoc: DocumentByName<DataModel, TableName>;
-  newDoc: null;
-});
+} & (
+  | {
+      operation: "insert";
+      oldDoc: null;
+      newDoc: DocumentByName<DataModel, TableName>;
+    }
+  | {
+      operation: "update";
+      oldDoc: DocumentByName<DataModel, TableName>;
+      newDoc: DocumentByName<DataModel, TableName>;
+    }
+  | {
+      operation: "delete";
+      oldDoc: DocumentByName<DataModel, TableName>;
+      newDoc: null;
+    }
+);
 
 type RunQueryCtx = {
   runQuery: GenericQueryCtx<GenericDataModel>["runQuery"];

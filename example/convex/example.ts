@@ -1,11 +1,19 @@
-import { internalMutation, query, mutation, internalAction } from "./_generated/server";
+import {
+  internalMutation,
+  query,
+  mutation,
+  internalAction,
+} from "./_generated/server";
 import { components, internal } from "./_generated/api";
 import { ShardedCounter } from "@convex-dev/sharded-counter";
 import { v } from "convex/values";
 import { Migrations } from "@convex-dev/migrations";
 import { DataModel } from "./_generated/dataModel";
 import { Triggers } from "convex-helpers/server/triggers";
-import { customCtx, customMutation } from "convex-helpers/server/customFunctions";
+import {
+  customCtx,
+  customMutation,
+} from "convex-helpers/server/customFunctions";
 
 /// Example of ShardedCounter initialization.
 
@@ -27,7 +35,6 @@ export const mutationWithTriggers = customMutation(
   mutation,
   customCtx(triggers.wrapDB),
 );
-
 
 /// Example functions using ShardedCounter.
 
@@ -117,8 +124,10 @@ export const backfillOldUsersBatch = migrations.define({
   table: "users",
   // Filter to before the timestamp when counts started getting updated
   // in the live path.
-  customRange: (query) => query.withIndex("by_creation_time", (q) =>
-    q.lt("_creationTime", Number(new Date("2024-10-01T16:20:00.000Z")))),
+  customRange: (query) =>
+    query.withIndex("by_creation_time", (q) =>
+      q.lt("_creationTime", Number(new Date("2024-10-01T16:20:00.000Z"))),
+    ),
   async migrateOne(ctx, _doc) {
     await counter.add(ctx, "users");
   },
@@ -132,30 +141,39 @@ export const insertUserDuringBackfill = internalMutation({
 
     const userDoc = (await ctx.db.get(id))!;
     const backfillCursor = await ctx.db.query("backfillCursor").unique();
-    if (!backfillCursor || backfillCursor.isDone
-        || userDoc._creationTime < backfillCursor.creationTime
-        || (userDoc._creationTime === backfillCursor.creationTime && userDoc._id <= backfillCursor.id)) {
+    if (
+      !backfillCursor ||
+      backfillCursor.isDone ||
+      userDoc._creationTime < backfillCursor.creationTime ||
+      (userDoc._creationTime === backfillCursor.creationTime &&
+        userDoc._id <= backfillCursor.id)
+    ) {
       await counter.add(ctx, "users");
     }
   },
 });
 
 export const backfillUsersBatch = internalMutation({
-  args: { cursor: v.union(v.string(), v.null())},
+  args: { cursor: v.union(v.string(), v.null()) },
   handler: async (ctx, args) => {
     const backfillCursor = await ctx.db.query("backfillCursor").unique();
     if (!backfillCursor || backfillCursor.isDone) {
       return { isDone: true };
     }
 
-    const { page, isDone, continueCursor } = await ctx.db.query("users")
+    const { page, isDone, continueCursor } = await ctx.db
+      .query("users")
       .paginate({
         cursor: args.cursor,
         numItems: 3,
       });
     for (const user of page) {
       await counter.add(ctx, "users");
-      await ctx.db.patch(backfillCursor._id, { isDone, creationTime: user._creationTime, id: user._id });
+      await ctx.db.patch(backfillCursor._id, {
+        isDone,
+        creationTime: user._creationTime,
+        id: user._id,
+      });
     }
     return { isDone, continueCursor };
   },
@@ -167,7 +185,8 @@ export const backfillUsers = internalAction({
     let cursor: string | null = null;
     while (true) {
       const { isDone, continueCursor } = await ctx.runMutation(
-        internal.example.backfillUsersBatch, { cursor },
+        internal.example.backfillUsersBatch,
+        { cursor },
       );
       if (isDone) {
         break;

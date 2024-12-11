@@ -25,11 +25,13 @@ describe("counter", () => {
 });
 
 fcTest.prop({
-  updates: fc.array(fc.record({
-    v: fc.integer({ min: -10000, max: 10000 }).map((i) => i / 100),
-    key: fc.string(),
-    shards: fc.option(fc.integer({ min: 1, max: 100 })),
-  })),
+  updates: fc.array(
+    fc.record({
+      v: fc.integer({ min: -10000, max: 10000 }).map((i) => i / 100),
+      key: fc.string(),
+      shards: fc.option(fc.integer({ min: 1, max: 100 })),
+    }),
+  ),
 })(
   "updates to counter should match in-memory counter which ignores sharding",
   async ({ updates }) => {
@@ -37,7 +39,11 @@ fcTest.prop({
     const counter = new Map<string, number>();
     for (const { v, key, shards } of updates) {
       counter.set(key, (counter.get(key) ?? 0) + v);
-      await t.mutation(api.public.add, { name: key, count: v, shards: shards ?? undefined });
+      await t.mutation(api.public.add, {
+        name: key,
+        count: v,
+        shards: shards ?? undefined,
+      });
       const count = await t.query(api.public.count, { name: key });
       expect(count).toBeCloseTo(counter.get(key)!);
     }
@@ -47,7 +53,10 @@ fcTest.prop({
       const count = await t.query(api.public.count, { name: key });
       expect(count).toBeCloseTo(value);
       for (let i = 1; i <= 16; i++) {
-        const estimate = await t.query(api.public.estimateCount, { name: key, readFromShards: i });
+        const estimate = await t.query(api.public.estimateCount, {
+          name: key,
+          readFromShards: i,
+        });
         expect(estimate).toBeCloseTo(value);
       }
     }

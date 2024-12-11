@@ -79,8 +79,13 @@ export const estimateCount = query({
   },
   handler: async (ctx, args) => {
     const shardCount = args.shards ?? DEFAULT_SHARD_COUNT;
-    const readFromShards = Math.min(Math.max(1, args.readFromShards ?? 1), shardCount);
-    const shards = shuffle(Array.from({ length: shardCount }, (_, i) => i)).slice(0, readFromShards);
+    const readFromShards = Math.min(
+      Math.max(1, args.readFromShards ?? 1),
+      shardCount,
+    );
+    const shards = shuffle(
+      Array.from({ length: shardCount }, (_, i) => i),
+    ).slice(0, readFromShards);
     let readCount = 0;
     for (const shard of shards) {
       const counter = await ctx.db
