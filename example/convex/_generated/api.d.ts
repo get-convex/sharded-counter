@@ -45,8 +45,8 @@ export declare const components: {
       add: FunctionReference<
         "mutation",
         "internal",
-        { count: number; name: string; shards?: number },
-        null
+        { count: number; name: string; shard?: number; shards?: number },
+        number
       >;
       count: FunctionReference<"query", "internal", { name: string }, number>;
       estimateCount: FunctionReference<
@@ -68,8 +68,8 @@ export declare const components: {
       add: FunctionReference<
         "mutation",
         "internal",
-        { count: number; name: string; shards?: number },
-        null
+        { count: number; name: string; shard?: number; shards?: number },
+        number
       >;
       count: FunctionReference<"query", "internal", { name: string }, number>;
       estimateCount: FunctionReference<

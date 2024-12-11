@@ -7,11 +7,14 @@ export const add = mutation({
   args: {
     name: v.string(),
     count: v.number(),
+    shard: v.optional(v.number()),
     shards: v.optional(v.number()),
   },
-  returns: v.null(),
+  returns: v.number(),
   handler: async (ctx, args) => {
-    const shard = Math.floor(Math.random() * (args.shards ?? DEFAULT_SHARD_COUNT));
+    const shard =
+      args.shard ??
+      Math.floor(Math.random() * (args.shards ?? DEFAULT_SHARD_COUNT));
     const counter = await ctx.db
       .query("counters")
       .withIndex("name", (q) => q.eq("name", args.name).eq("shard", shard))
@@ -27,6 +30,7 @@ export const add = mutation({
         shard,
       });
     }
+    return shard;
   },
 });
 

@@ -36,7 +36,21 @@ export class ShardedCounter<ShardsKey extends string> {
       shards?: Partial<Record<ShardsKey, number>>;
       defaultShards?: number;
     },
-  ) {}
+  ) {
+    this.stickyShard = {};
+    const defaultShards = options?.defaultShards;
+    this.shardsForKey = (name: ShardsKey) => {
+      const explicitShards = options?.shards?.[name];
+      return explicitShards ?? defaultShards;
+    };
+  }
+
+  private shardsForKey: (name: ShardsKey) => number | undefined;
+
+  // Keep track of the shard for each key, so multiple mutations on the same key
+  // will use the same shard.
+  private stickyShard: Record<string, number>;
+
   /**
    * Increase the counter for key `name` by `count`.
    * If `count` is negative, the counter will decrease.
@@ -49,11 +63,13 @@ export class ShardedCounter<ShardsKey extends string> {
     name: Name,
     count: number = 1,
   ) {
-    return ctx.runMutation(this.component.public.add, {
+    const shard = await ctx.runMutation(this.component.public.add, {
       name,
       count,
+      shard: this.stickyShard?.[name],
       shards: this.shardsForKey(name),
     });
+    this.stickyShard[name] = shard;
   }
 
   /**
@@ -201,10 +217,6 @@ export class ShardedCounter<ShardsKey extends string> {
         await this.dec(ctx, name);
       }
     };
-  }
-  private shardsForKey<Name extends ShardsKey>(name: Name) {
-    const explicitShards = this.options?.shards?.[name as string as ShardsKey];
-    return explicitShards ?? this.options?.defaultShards;
   }
 }
 

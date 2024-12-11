@@ -22,6 +22,23 @@ describe("counter", () => {
     expect(await t.query(api.public.count, { name: "beans" })).toEqual(10);
     expect(await t.query(api.public.count, { name: "friends" })).toEqual(11);
   });
+  test("respects shard argument", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(api.public.add, { name: "beans", count: 10, shard: 1 });
+    await t.mutation(api.public.add, { name: "beans", count: 5, shard: 2 });
+    const values = await t.run(async (ctx) => {
+      const shard1 = await ctx.db
+        .query("counters")
+        .withIndex("name", (q) => q.eq("name", "beans").eq("shard", 1))
+        .unique();
+      const shard2 = await ctx.db
+        .query("counters")
+        .withIndex("name", (q) => q.eq("name", "beans").eq("shard", 2))
+        .unique();
+      return [shard1?.value, shard2?.value];
+    });
+    expect(values).toEqual([10, 5]);
+  });
 });
 
 fcTest.prop({

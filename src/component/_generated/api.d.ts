@@ -31,8 +31,8 @@ export type Mounts = {
     add: FunctionReference<
       "mutation",
       "public",
-      { count: number; name: string; shards?: number },
-      null
+      { count: number; name: string; shard?: number; shards?: number },
+      number
     >;
     count: FunctionReference<"query", "public", { name: string }, number>;
     estimateCount: FunctionReference<
