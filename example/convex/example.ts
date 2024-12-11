@@ -69,7 +69,6 @@ export const estimateUserCount = query({
 export const usingClient = internalMutation({
   args: {},
   handler: async (ctx, _args) => {
-    await counter.add(ctx, "accomplishments");
     await counter.add(ctx, "beans", 2);
     const count = await counter.count(ctx, "beans");
     return count;

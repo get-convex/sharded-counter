@@ -32,7 +32,10 @@ export class ShardedCounter<ShardsKey extends string> {
    */
   constructor(
     private component: UseApi<typeof api>,
-    private options?: { shards?: Record<ShardsKey, number>; defaultShards?: number }
+    options?: {
+      shards?: Partial<Record<ShardsKey, number>>;
+      defaultShards?: number;
+    },
   ) {}
   /**
    * Increase the counter for key `name` by `count`.
@@ -41,7 +44,7 @@ export class ShardedCounter<ShardsKey extends string> {
    * @param name The key to update the counter for.
    * @param count The amount to increment the counter by. Defaults to 1.
    */
-  async add<Name extends string = ShardsKey>(
+  async add<Name extends ShardsKey>(
     ctx: RunMutationCtx,
     name: Name,
     count: number = 1,
@@ -56,7 +59,7 @@ export class ShardedCounter<ShardsKey extends string> {
   /**
    * Decrease the counter for key `name` by `count`.
    */
-  async subtract<Name extends string = ShardsKey>(
+  async subtract<Name extends ShardsKey>(
     ctx: RunMutationCtx,
     name: Name,
     count: number = 1,
@@ -67,14 +70,14 @@ export class ShardedCounter<ShardsKey extends string> {
   /**
    * Increment the counter for key `name` by 1.
    */
-  async inc<Name extends string = ShardsKey>(ctx: RunMutationCtx, name: Name) {
+  async inc<Name extends ShardsKey>(ctx: RunMutationCtx, name: Name) {
     return this.add(ctx, name, 1);
   }
 
   /**
    * Decrement the counter for key `name` by 1.
    */
-  async dec<Name extends string = ShardsKey>(ctx: RunMutationCtx, name: Name) {
+  async dec<Name extends ShardsKey>(ctx: RunMutationCtx, name: Name) {
     return this.add(ctx, name, -1);
   }
 
@@ -84,7 +87,7 @@ export class ShardedCounter<ShardsKey extends string> {
    * NOTE: this reads from all shards. If used in a mutation, it will contend
    * with all mutations that update the counter for this key.
    */
-  async count<Name extends string = ShardsKey>(ctx: RunQueryCtx, name: Name) {
+  async count<Name extends ShardsKey>(ctx: RunQueryCtx, name: Name) {
     return ctx.runQuery(this.component.public.count, { name });
   }
 
@@ -100,10 +103,7 @@ export class ShardedCounter<ShardsKey extends string> {
    * This operation reads and writes all shards, so it can cause contention if
    * called too often.
    */
-  async rebalance<Name extends string = ShardsKey>(
-    ctx: RunMutationCtx,
-    name: Name,
-  ) {
+  async rebalance<Name extends ShardsKey>(ctx: RunMutationCtx, name: Name) {
     await ctx.runMutation(this.component.public.rebalance, {
       name,
       shards: this.shardsForKey(name),
@@ -121,7 +121,7 @@ export class ShardedCounter<ShardsKey extends string> {
    *
    * Use this to reduce contention when reading the counter.
    */
-  async estimateCount<Name extends string = ShardsKey>(
+  async estimateCount<Name extends ShardsKey>(
     ctx: RunQueryCtx,
     name: Name,
     readFromShards: number = 1,
@@ -147,7 +147,7 @@ export class ShardedCounter<ShardsKey extends string> {
    * });
    * ```
    */
-  for<Name extends string = ShardsKey>(name: Name) {
+  for<Name extends ShardsKey>(name: Name) {
     return {
       /**
        * Add `count` to the counter.
@@ -191,7 +191,7 @@ export class ShardedCounter<ShardsKey extends string> {
         this.estimateCount(ctx, name, readFromShards),
     };
   }
-  trigger<Ctx extends RunMutationCtx, Name extends string = ShardsKey>(
+  trigger<Ctx extends RunMutationCtx, Name extends ShardsKey>(
     name: Name,
   ): Trigger<Ctx, GenericDataModel, TableNamesInDataModel<GenericDataModel>> {
     return async (ctx, change) => {
@@ -202,7 +202,7 @@ export class ShardedCounter<ShardsKey extends string> {
       }
     };
   }
-  private shardsForKey<Name extends string = ShardsKey>(name: Name) {
+  private shardsForKey<Name extends ShardsKey>(name: Name) {
     const explicitShards = this.options?.shards?.[name as string as ShardsKey];
     return explicitShards ?? this.options?.defaultShards;
   }
