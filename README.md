@@ -2,8 +2,6 @@
 
 [![npm version](https://badge.fury.io/js/@convex-dev%2Fsharded-counter.svg)](https://badge.fury.io/js/@convex-dev%2Fsharded-counter)
 
-**Note: Convex Components are currently in beta.**
-
 <!-- START: Include on https://convex.dev/components -->
 
 This component adds counters to Convex. It acts as a key-value store from
