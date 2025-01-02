@@ -61,6 +61,7 @@ export declare const components: {
         { name: string; shards?: number },
         any
       >;
+      reset: FunctionReference<"mutation", "internal", { name: string }, any>;
     };
   };
   checkboxCounter: {
@@ -84,6 +85,7 @@ export declare const components: {
         { name: string; shards?: number },
         any
       >;
+      reset: FunctionReference<"mutation", "internal", { name: string }, any>;
     };
   };
   migrations: {

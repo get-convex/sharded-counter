@@ -59,6 +59,13 @@ export const rebalanceUsers = mutation({
   },
 });
 
+export const resetUsers = mutation({
+  args: {},
+  handler: async (ctx, _args) => {
+    await numUsers.reset(ctx);
+  },
+});
+
 export const estimateUserCount = query({
   args: {},
   handler: async (ctx, _args) => {

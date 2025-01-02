@@ -127,6 +127,15 @@ export class ShardedCounter<ShardsKey extends string> {
   }
 
   /**
+   * Clear the counter for key `name`.
+   *
+   * @param name The key to clear the counter for.
+   */
+  async reset<Name extends ShardsKey>(ctx: RunMutationCtx, name: Name) {
+    await ctx.runMutation(this.component.public.reset, { name });
+  }
+
+  /**
    * Estimate the count of a counter by only reading from a subset of shards,
    * and extrapolating the total count.
    *
@@ -190,6 +199,10 @@ export class ShardedCounter<ShardsKey extends string> {
        * contend with all mutations that update the counter for this key.
        */
       count: async (ctx: RunQueryCtx) => this.count(ctx, name),
+      /**
+       * Reset the counter for this key.
+       */
+      reset: async (ctx: RunMutationCtx) => this.reset(ctx, name),
       /**
        * Redistribute counts evenly across the counter's shards.
        *

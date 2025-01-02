@@ -75,6 +75,19 @@ export const rebalance = mutation({
   },
 });
 
+export const reset = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db
+      .query("counters")
+      .withIndex("name", (q) => q.eq("name", args.name))
+      .collect()
+      .then((counters) =>
+        Promise.all(counters.map((c) => ctx.db.delete(c._id))),
+      );
+  },
+});
+
 export const estimateCount = query({
   args: {
     name: v.string(),

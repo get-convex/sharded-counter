@@ -47,6 +47,7 @@ export type Mounts = {
       { name: string; shards?: number },
       any
     >;
+    reset: FunctionReference<"mutation", "public", { name: string }, any>;
   };
 };
 // For now fullApiWithMounts is only fullApi which provides

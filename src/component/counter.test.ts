@@ -39,6 +39,12 @@ describe("counter", () => {
     });
     expect(values).toEqual([10, 5]);
   });
+  test("reset", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(api.public.add, { name: "beans", count: 10 });
+    await t.mutation(api.public.reset, { name: "beans" });
+    expect(await t.query(api.public.count, { name: "beans" })).toEqual(0);
+  });
 });
 
 fcTest.prop({
