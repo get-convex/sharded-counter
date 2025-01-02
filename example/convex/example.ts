@@ -209,3 +209,32 @@ export const insertUserWithTrigger = mutationWithTriggers({
     await ctx.db.insert("users", { name: "Alice" });
   },
 });
+
+export const testStickyShards = internalMutation({
+  args: {},
+  handler: async (ctx, _args) => {
+    await counter.reset(ctx, "beans");
+    if ((await counter.count(ctx, "beans")) !== 0) {
+      throw new Error("Counter is not reset");
+    }
+    for (let i = 0; i < 100; i++) {
+      await counter.add(ctx, "beans", 1);
+    }
+    for (let i = 0; i < 100; i++) {
+      // check that each shard is either 100 or 0
+      const count = await ctx.runQuery(
+        components.shardedCounter.public.estimateCount,
+        {
+          name: "beans",
+          readFromShards: 1,
+          shards: 10,
+        },
+      );
+      // Estimate is 1000 because 100 is on 1/10th of the shards.
+      if (count !== 1000 && count !== 0) {
+        throw new Error(`Unexpected count: ${count}`);
+      }
+    }
+    console.log("testStickyShards passed");
+  },
+});
