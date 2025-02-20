@@ -31,8 +31,8 @@ export type Mounts = {
     add: FunctionReference<
       "mutation",
       "public",
-      { count: number; name: string; shards?: number },
-      null
+      { count: number; name: string; shard?: number; shards?: number },
+      number
     >;
     count: FunctionReference<"query", "public", { name: string }, number>;
     estimateCount: FunctionReference<
@@ -47,6 +47,7 @@ export type Mounts = {
       { name: string; shards?: number },
       any
     >;
+    reset: FunctionReference<"mutation", "public", { name: string }, any>;
   };
 };
 // For now fullApiWithMounts is only fullApi which provides

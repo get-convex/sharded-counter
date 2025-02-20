@@ -18,13 +18,13 @@ export class ShardedCounter<ShardsKey extends string> {
   /**
    * A sharded counter is a map from string -> counter, where each counter can
    * be incremented or decremented.
-   * 
+   *
    * The counter is sharded into multiple documents to allow for higher
    * throughput of updates. The default number of shards is 16.
-   * 
+   *
    * - More shards => higher throughput of updates.
    * - Fewer shards => lower latency when querying the counter.
-   * 
+   *
    * @param options.shards The number of shards for each counter, for fixed
    *   keys.
    * @param options.defaultShards The number of shards for each counter, for
@@ -32,93 +32,121 @@ export class ShardedCounter<ShardsKey extends string> {
    */
   constructor(
     private component: UseApi<typeof api>,
-    private options?: { shards?: Record<ShardsKey, number>; defaultShards?: number }
-  ) {}
+    options?: {
+      shards?: Partial<Record<ShardsKey, number>>;
+      defaultShards?: number;
+    },
+  ) {
+    this.stickyShard = {};
+    const defaultShards = options?.defaultShards;
+    this.shardsForKey = (name: ShardsKey) => {
+      const explicitShards = options?.shards?.[name];
+      return explicitShards ?? defaultShards;
+    };
+  }
+
+  private shardsForKey: (name: ShardsKey) => number | undefined;
+
+  // Keep track of the shard for each key, so multiple mutations on the same key
+  // will use the same shard.
+  private stickyShard: Record<string, number>;
+
   /**
    * Increase the counter for key `name` by `count`.
    * If `count` is negative, the counter will decrease.
-   * 
+   *
    * @param name The key to update the counter for.
    * @param count The amount to increment the counter by. Defaults to 1.
    */
-  async add<Name extends string = ShardsKey>(
+  async add<Name extends ShardsKey>(
     ctx: RunMutationCtx,
     name: Name,
-    count: number = 1
+    count: number = 1,
   ) {
-    return ctx.runMutation(this.component.public.add, {
+    const shard = await ctx.runMutation(this.component.public.add, {
       name,
       count,
+      shard: this.stickyShard?.[name],
       shards: this.shardsForKey(name),
     });
+    this.stickyShard[name] = shard;
   }
+
   /**
    * Decrease the counter for key `name` by `count`.
    */
-  async subtract<Name extends string = ShardsKey>(
+  async subtract<Name extends ShardsKey>(
     ctx: RunMutationCtx,
     name: Name,
-    count: number = 1
+    count: number = 1,
   ) {
     return this.add(ctx, name, -count);
   }
+
   /**
    * Increment the counter for key `name` by 1.
    */
-  async inc<Name extends string = ShardsKey>(ctx: RunMutationCtx, name: Name) {
+  async inc<Name extends ShardsKey>(ctx: RunMutationCtx, name: Name) {
     return this.add(ctx, name, 1);
   }
+
   /**
    * Decrement the counter for key `name` by 1.
    */
-  async dec<Name extends string = ShardsKey>(ctx: RunMutationCtx, name: Name) {
+  async dec<Name extends ShardsKey>(ctx: RunMutationCtx, name: Name) {
     return this.add(ctx, name, -1);
   }
+
   /**
    * Gets the counter for key `name`.
    *
    * NOTE: this reads from all shards. If used in a mutation, it will contend
    * with all mutations that update the counter for this key.
    */
-  async count<Name extends string = ShardsKey>(
-    ctx: RunQueryCtx,
-    name: Name
-  ) {
+  async count<Name extends ShardsKey>(ctx: RunQueryCtx, name: Name) {
     return ctx.runQuery(this.component.public.count, { name });
   }
+
   /**
    * Redistribute counts evenly across the counter's shards.
-   * 
+   *
    * If there were more shards for this counter at some point, those shards
    * will be removed.
-   * 
+   *
    * If there were fewer shards for this counter, or if the random distribution
    * of counts is uneven, the counts will be redistributed evenly.
-   * 
+   *
    * This operation reads and writes all shards, so it can cause contention if
    * called too often.
    */
-  async rebalance<Name extends string = ShardsKey>(
-    ctx: RunMutationCtx,
-    name: Name,
-  ) {
+  async rebalance<Name extends ShardsKey>(ctx: RunMutationCtx, name: Name) {
     await ctx.runMutation(this.component.public.rebalance, {
       name,
       shards: this.shardsForKey(name),
     });
   }
+
+  /**
+   * Clear the counter for key `name`.
+   *
+   * @param name The key to clear the counter for.
+   */
+  async reset<Name extends ShardsKey>(ctx: RunMutationCtx, name: Name) {
+    await ctx.runMutation(this.component.public.reset, { name });
+  }
+
   /**
    * Estimate the count of a counter by only reading from a subset of shards,
    * and extrapolating the total count.
-   * 
+   *
    * After a `rebalance`, or if there were a lot of data points to yield a
    * random distribution across shards, this should be a good approximation of
    * the total count. If there are few data points, which are not evenly
    * distributed across shards, this will be a poor approximation.
-   * 
+   *
    * Use this to reduce contention when reading the counter.
    */
-  async estimateCount<Name extends string = ShardsKey>(
+  async estimateCount<Name extends ShardsKey>(
     ctx: RunQueryCtx,
     name: Name,
     readFromShards: number = 1,
@@ -144,7 +172,7 @@ export class ShardedCounter<ShardsKey extends string> {
    * });
    * ```
    */
-  for<Name extends string = ShardsKey>(name: Name) {
+  for<Name extends ShardsKey>(name: Name) {
     return {
       /**
        * Add `count` to the counter.
@@ -166,14 +194,18 @@ export class ShardedCounter<ShardsKey extends string> {
       dec: async (ctx: RunMutationCtx) => this.add(ctx, name, -1),
       /**
        * Get the current value of the counter.
-       * 
+       *
        * NOTE: this reads from all shards. If used in a mutation, it will
        * contend with all mutations that update the counter for this key.
        */
       count: async (ctx: RunQueryCtx) => this.count(ctx, name),
       /**
+       * Reset the counter for this key.
+       */
+      reset: async (ctx: RunMutationCtx) => this.reset(ctx, name),
+      /**
        * Redistribute counts evenly across the counter's shards.
-       * 
+       *
        * This operation reads and writes all shards, so it can cause contention
        * if called too often.
        */
@@ -181,17 +213,14 @@ export class ShardedCounter<ShardsKey extends string> {
       /**
        * Estimate the counter by only reading from a subset of shards,
        * and extrapolating the total count.
-       * 
+       *
        * Use this to reduce contention when reading the counter.
        */
       estimateCount: async (ctx: RunQueryCtx, readFromShards: number = 1) =>
         this.estimateCount(ctx, name, readFromShards),
     };
   }
-  trigger<
-    Ctx extends RunMutationCtx,
-    Name extends string = ShardsKey,
-  >(
+  trigger<Ctx extends RunMutationCtx, Name extends ShardsKey>(
     name: Name,
   ): Trigger<Ctx, GenericDataModel, TableNamesInDataModel<GenericDataModel>> {
     return async (ctx, change) => {
@@ -201,10 +230,6 @@ export class ShardedCounter<ShardsKey extends string> {
         await this.dec(ctx, name);
       }
     };
-  }
-  private shardsForKey<Name extends string = ShardsKey>(name: Name) {
-    const explicitShards = this.options?.shards?.[name as string as ShardsKey];
-    return explicitShards ?? this.options?.defaultShards;
   }
 }
 
@@ -221,19 +246,23 @@ export type Change<
   TableName extends TableNamesInDataModel<DataModel>,
 > = {
   id: GenericId<TableName>;
-} & ({
-  operation: "insert";
-  oldDoc: null
-  newDoc: DocumentByName<DataModel, TableName>;
-} | {
-  operation: "update";
-  oldDoc: DocumentByName<DataModel, TableName>;
-  newDoc: DocumentByName<DataModel, TableName>;
-} | {
-  operation: "delete";
-  oldDoc: DocumentByName<DataModel, TableName>;
-  newDoc: null;
-});
+} & (
+  | {
+      operation: "insert";
+      oldDoc: null;
+      newDoc: DocumentByName<DataModel, TableName>;
+    }
+  | {
+      operation: "update";
+      oldDoc: DocumentByName<DataModel, TableName>;
+      newDoc: DocumentByName<DataModel, TableName>;
+    }
+  | {
+      operation: "delete";
+      oldDoc: DocumentByName<DataModel, TableName>;
+      newDoc: null;
+    }
+);
 
 type RunQueryCtx = {
   runQuery: GenericQueryCtx<GenericDataModel>["runQuery"];

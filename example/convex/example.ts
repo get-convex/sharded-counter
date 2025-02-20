@@ -1,11 +1,19 @@
-import { internalMutation, query, mutation, internalAction } from "./_generated/server";
+import {
+  internalMutation,
+  query,
+  mutation,
+  internalAction,
+} from "./_generated/server";
 import { components, internal } from "./_generated/api";
 import { ShardedCounter } from "@convex-dev/sharded-counter";
 import { v } from "convex/values";
 import { Migrations } from "@convex-dev/migrations";
 import { DataModel } from "./_generated/dataModel";
 import { Triggers } from "convex-helpers/server/triggers";
-import { customCtx, customMutation } from "convex-helpers/server/customFunctions";
+import {
+  customCtx,
+  customMutation,
+} from "convex-helpers/server/customFunctions";
 
 /// Example of ShardedCounter initialization.
 
@@ -27,7 +35,6 @@ export const mutationWithTriggers = customMutation(
   mutation,
   customCtx(triggers.wrapDB),
 );
-
 
 /// Example functions using ShardedCounter.
 
@@ -52,6 +59,13 @@ export const rebalanceUsers = mutation({
   },
 });
 
+export const resetUsers = mutation({
+  args: {},
+  handler: async (ctx, _args) => {
+    await numUsers.reset(ctx);
+  },
+});
+
 export const estimateUserCount = query({
   args: {},
   handler: async (ctx, _args) => {
@@ -62,7 +76,6 @@ export const estimateUserCount = query({
 export const usingClient = internalMutation({
   args: {},
   handler: async (ctx, _args) => {
-    await counter.add(ctx, "accomplishments");
     await counter.add(ctx, "beans", 2);
     const count = await counter.count(ctx, "beans");
     return count;
@@ -117,8 +130,10 @@ export const backfillOldUsersBatch = migrations.define({
   table: "users",
   // Filter to before the timestamp when counts started getting updated
   // in the live path.
-  customRange: (query) => query.withIndex("by_creation_time", (q) =>
-    q.lt("_creationTime", Number(new Date("2024-10-01T16:20:00.000Z")))),
+  customRange: (query) =>
+    query.withIndex("by_creation_time", (q) =>
+      q.lt("_creationTime", Number(new Date("2024-10-01T16:20:00.000Z"))),
+    ),
   async migrateOne(ctx, _doc) {
     await counter.add(ctx, "users");
   },
@@ -132,30 +147,39 @@ export const insertUserDuringBackfill = internalMutation({
 
     const userDoc = (await ctx.db.get(id))!;
     const backfillCursor = await ctx.db.query("backfillCursor").unique();
-    if (!backfillCursor || backfillCursor.isDone
-        || userDoc._creationTime < backfillCursor.creationTime
-        || (userDoc._creationTime === backfillCursor.creationTime && userDoc._id <= backfillCursor.id)) {
+    if (
+      !backfillCursor ||
+      backfillCursor.isDone ||
+      userDoc._creationTime < backfillCursor.creationTime ||
+      (userDoc._creationTime === backfillCursor.creationTime &&
+        userDoc._id <= backfillCursor.id)
+    ) {
       await counter.add(ctx, "users");
     }
   },
 });
 
 export const backfillUsersBatch = internalMutation({
-  args: { cursor: v.union(v.string(), v.null())},
+  args: { cursor: v.union(v.string(), v.null()) },
   handler: async (ctx, args) => {
     const backfillCursor = await ctx.db.query("backfillCursor").unique();
     if (!backfillCursor || backfillCursor.isDone) {
       return { isDone: true };
     }
 
-    const { page, isDone, continueCursor } = await ctx.db.query("users")
+    const { page, isDone, continueCursor } = await ctx.db
+      .query("users")
       .paginate({
         cursor: args.cursor,
         numItems: 3,
       });
     for (const user of page) {
       await counter.add(ctx, "users");
-      await ctx.db.patch(backfillCursor._id, { isDone, creationTime: user._creationTime, id: user._id });
+      await ctx.db.patch(backfillCursor._id, {
+        isDone,
+        creationTime: user._creationTime,
+        id: user._id,
+      });
     }
     return { isDone, continueCursor };
   },
@@ -167,7 +191,8 @@ export const backfillUsers = internalAction({
     let cursor: string | null = null;
     while (true) {
       const { isDone, continueCursor } = await ctx.runMutation(
-        internal.example.backfillUsersBatch, { cursor },
+        internal.example.backfillUsersBatch,
+        { cursor },
       );
       if (isDone) {
         break;
@@ -182,5 +207,34 @@ export const insertUserWithTrigger = mutationWithTriggers({
   args: {},
   handler: async (ctx, _args) => {
     await ctx.db.insert("users", { name: "Alice" });
+  },
+});
+
+export const testStickyShards = internalMutation({
+  args: {},
+  handler: async (ctx, _args) => {
+    await counter.reset(ctx, "beans");
+    if ((await counter.count(ctx, "beans")) !== 0) {
+      throw new Error("Counter is not reset");
+    }
+    for (let i = 0; i < 100; i++) {
+      await counter.add(ctx, "beans", 1);
+    }
+    for (let i = 0; i < 100; i++) {
+      // check that each shard is either 100 or 0
+      const count = await ctx.runQuery(
+        components.shardedCounter.public.estimateCount,
+        {
+          name: "beans",
+          readFromShards: 1,
+          shards: 10,
+        },
+      );
+      // Estimate is 1000 because 100 is on 1/10th of the shards.
+      if (count !== 1000 && count !== 0) {
+        throw new Error(`Unexpected count: ${count}`);
+      }
+    }
+    console.log("testStickyShards passed");
   },
 });

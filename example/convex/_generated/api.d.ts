@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as checkboxes from "../checkboxes.js";
 import type * as example from "../example.js";
 
 import type {
@@ -24,6 +25,7 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  checkboxes: typeof checkboxes;
   example: typeof example;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
@@ -43,8 +45,8 @@ export declare const components: {
       add: FunctionReference<
         "mutation",
         "internal",
-        { count: number; name: string; shards?: number },
-        null
+        { count: number; name: string; shard?: number; shards?: number },
+        number
       >;
       count: FunctionReference<"query", "internal", { name: string }, number>;
       estimateCount: FunctionReference<
@@ -59,6 +61,31 @@ export declare const components: {
         { name: string; shards?: number },
         any
       >;
+      reset: FunctionReference<"mutation", "internal", { name: string }, any>;
+    };
+  };
+  checkboxCounter: {
+    public: {
+      add: FunctionReference<
+        "mutation",
+        "internal",
+        { count: number; name: string; shard?: number; shards?: number },
+        number
+      >;
+      count: FunctionReference<"query", "internal", { name: string }, number>;
+      estimateCount: FunctionReference<
+        "query",
+        "internal",
+        { name: string; readFromShards?: number; shards?: number },
+        any
+      >;
+      rebalance: FunctionReference<
+        "mutation",
+        "internal",
+        { name: string; shards?: number },
+        any
+      >;
+      reset: FunctionReference<"mutation", "internal", { name: string }, any>;
     };
   };
   migrations: {

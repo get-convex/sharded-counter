@@ -2,8 +2,6 @@
 
 [![npm version](https://badge.fury.io/js/@convex-dev%2Fsharded-counter.svg)](https://badge.fury.io/js/@convex-dev%2Fsharded-counter)
 
-**Note: Convex Components are currently in beta.**
-
 <!-- START: Include on https://convex.dev/components -->
 
 This component adds counters to Convex. It acts as a key-value store from
@@ -101,12 +99,14 @@ await counter.add(ctx, "checkboxes", 5); // increment by 5
 await counter.inc(ctx, "checkboxes"); // increment by 1
 await counter.subtract(ctx, "checkboxes", 5); // decrement by 5
 await counter.dec(ctx, "checkboxes"); // decrement by 1
+await counter.reset(ctx, "checkboxes"); // reset to 0
 
 const numCheckboxes = counter.for("checkboxes");
 await numCheckboxes.inc(ctx); // increment
 await numCheckboxes.dec(ctx); // decrement
 await numCheckboxes.add(ctx, 5); // add 5
 await numCheckboxes.subtract(ctx, 5); // subtract 5
+await numCheckboxes.reset(ctx); // reset to 0
 ```
 
 And you can read the counter's value in a query, mutation, or action.
@@ -145,7 +145,7 @@ Or by setting a default that applies to all keys not specified in `shards`:
 ```ts
 const counter = new ShardedCounter(components.shardedCounter, {
   shards: { checkboxes: 100 },
-  defaultShards: 20,
+  defaultShards: 8,
 });
 ```
 
@@ -187,7 +187,7 @@ number of shards to form an estimate. You can improve the estimate by reading
 from more shards, at the cost of more contention:
 
 ```ts
-const betterEstimatedCheckboxCount = await counter.estimateCount(ctx, "checkboxes", 3);
+const estimateFromThree = await counter.estimateCount(ctx, "checkboxes", 3);
 ```
 
 If the counter was accumulated from many
@@ -261,7 +261,7 @@ async function insertUser(ctx, user) {
 }
 ```
 
-3. Register a [Trigger]((https://www.npmjs.com/package/convex-helpers#triggers)),
+3. Register a [Trigger](https://www.npmjs.com/package/convex-helpers#triggers),
    which automatically runs code when a mutation changes the
    data in a table.
 

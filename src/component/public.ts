@@ -7,11 +7,14 @@ export const add = mutation({
   args: {
     name: v.string(),
     count: v.number(),
+    shard: v.optional(v.number()),
     shards: v.optional(v.number()),
   },
-  returns: v.null(),
+  returns: v.number(),
   handler: async (ctx, args) => {
-    const shard = Math.floor(Math.random() * (args.shards ?? DEFAULT_SHARD_COUNT));
+    const shard =
+      args.shard ??
+      Math.floor(Math.random() * (args.shards ?? DEFAULT_SHARD_COUNT));
     const counter = await ctx.db
       .query("counters")
       .withIndex("name", (q) => q.eq("name", args.name).eq("shard", shard))
@@ -27,6 +30,7 @@ export const add = mutation({
         shard,
       });
     }
+    return shard;
   },
 });
 
@@ -71,6 +75,19 @@ export const rebalance = mutation({
   },
 });
 
+export const reset = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db
+      .query("counters")
+      .withIndex("name", (q) => q.eq("name", args.name))
+      .collect()
+      .then((counters) =>
+        Promise.all(counters.map((c) => ctx.db.delete(c._id))),
+      );
+  },
+});
+
 export const estimateCount = query({
   args: {
     name: v.string(),
@@ -79,8 +96,13 @@ export const estimateCount = query({
   },
   handler: async (ctx, args) => {
     const shardCount = args.shards ?? DEFAULT_SHARD_COUNT;
-    const readFromShards = Math.min(Math.max(1, args.readFromShards ?? 1), shardCount);
-    const shards = shuffle(Array.from({ length: shardCount }, (_, i) => i)).slice(0, readFromShards);
+    const readFromShards = Math.min(
+      Math.max(1, args.readFromShards ?? 1),
+      shardCount,
+    );
+    const shards = shuffle(
+      Array.from({ length: shardCount }, (_, i) => i),
+    ).slice(0, readFromShards);
     let readCount = 0;
     for (const shard of shards) {
       const counter = await ctx.db
