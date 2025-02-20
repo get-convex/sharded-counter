@@ -156,7 +156,7 @@ friends for each user, and you don't care about throughput for a single user,
 you would declare ShardedCounter like so:
 
 ```ts
-const friendCounts = new ShardedCounter<Record<Id<"users">, number>>(
+const friendCounts = new ShardedCounter<Id<"users">>(
   components.shardedCounter,
   { defaultShards: 1 },
 );
