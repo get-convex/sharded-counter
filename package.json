@@ -60,6 +60,7 @@
   },
   "devDependencies": {
     "@convex-dev/migrations": "^0.2.9",
+    "@edge-runtime/vm": "^5.0.0",
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.38.0",
     "@fast-check/vitest": "^0.2.2",

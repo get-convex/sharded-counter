@@ -1,4 +1,4 @@
-import {
+import type {
   DocumentByName,
   Expand,
   FunctionReference,
@@ -7,7 +7,7 @@ import {
   GenericQueryCtx,
   TableNamesInDataModel,
 } from "convex/server";
-import { GenericId } from "convex/values";
+import type { GenericId } from "convex/values";
 import type { ComponentApi } from "../component/_generated/component.js";
 /**
  * A sharded counter is a map from string -> counter, where each counter can
