@@ -23,9 +23,9 @@ function App() {
         }))
         .reduce(
           (acc, curr) => ({ ...acc, [curr.args.documentIdx.toString()]: curr }),
-          {}
+          {},
         ),
-    []
+    [],
   );
 
   const boxRecord = useQueries(queries);
@@ -214,7 +214,7 @@ const Cell = ({
           }
         }
       }
-    }
+    },
   );
   if (index >= NUM_BOXES) {
     return null;
