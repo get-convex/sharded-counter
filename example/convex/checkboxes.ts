@@ -108,7 +108,7 @@ export const toggleRandom = internalMutation({
         .first();
       if (box) {
         const jitter = Math.random() * 100000;
-        ctx.scheduler.runAfter(jitter, api.checkboxes.toggle, {
+        await ctx.scheduler.runAfter(jitter, api.checkboxes.toggle, {
           documentIdx,
           arrayIdx,
           checked: !isChecked(new Uint8Array(box.boxes), arrayIdx),

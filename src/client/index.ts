@@ -1,7 +1,5 @@
 import type {
   DocumentByName,
-  Expand,
-  FunctionReference,
   GenericDataModel,
   GenericMutationCtx,
   GenericQueryCtx,
