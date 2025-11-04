@@ -8,59 +8,41 @@
  * @module
  */
 
-import type * as public from "../public.js";
+import type * as public_ from "../public.js";
 
 import type {
   ApiFromModules,
   FilterApi,
   FunctionReference,
 } from "convex/server";
+
+declare const fullApi: ApiFromModules<{
+  public: typeof public_;
+}>;
+
 /**
- * A utility for referencing Convex functions in your app's API.
+ * A utility for referencing Convex functions in your app's public API.
  *
  * Usage:
  * ```js
  * const myFunctionReference = api.myModule.myFunction;
  * ```
  */
-declare const fullApi: ApiFromModules<{
-  public: typeof public;
-}>;
-export type Mounts = {
-  public: {
-    add: FunctionReference<
-      "mutation",
-      "public",
-      { count: number; name: string; shard?: number; shards?: number },
-      number
-    >;
-    count: FunctionReference<"query", "public", { name: string }, number>;
-    estimateCount: FunctionReference<
-      "query",
-      "public",
-      { name: string; readFromShards?: number; shards?: number },
-      any
-    >;
-    rebalance: FunctionReference<
-      "mutation",
-      "public",
-      { name: string; shards?: number },
-      any
-    >;
-    reset: FunctionReference<"mutation", "public", { name: string }, any>;
-  };
-};
-// For now fullApiWithMounts is only fullApi which provides
-// jump-to-definition in component client code.
-// Use Mounts for the same type without the inference.
-declare const fullApiWithMounts: typeof fullApi;
-
 export declare const api: FilterApi<
-  typeof fullApiWithMounts,
+  typeof fullApi,
   FunctionReference<any, "public">
 >;
+
+/**
+ * A utility for referencing Convex functions in your app's internal API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = internal.myModule.myFunction;
+ * ```
+ */
 export declare const internal: FilterApi<
-  typeof fullApiWithMounts,
+  typeof fullApi,
   FunctionReference<any, "internal">
 >;
 

@@ -8,8 +8,7 @@ import {
   TableNamesInDataModel,
 } from "convex/server";
 import { GenericId } from "convex/values";
-import { api } from "../component/_generated/api";
-
+import type { ComponentApi } from "../component/_generated/component.js";
 /**
  * A sharded counter is a map from string -> counter, where each counter can
  * be incremented or decremented atomically.
@@ -31,7 +30,7 @@ export class ShardedCounter<ShardsKey extends string> {
    *   keys not in `options.shards`.
    */
   constructor(
-    private component: UseApi<typeof api>,
+    private component: ComponentApi,
     options?: {
       shards?: Partial<Record<ShardsKey, number>>;
       defaultShards?: number;
@@ -270,30 +269,3 @@ type RunQueryCtx = {
 type RunMutationCtx = {
   runMutation: GenericMutationCtx<GenericDataModel>["runMutation"];
 };
-
-export type OpaqueIds<T> =
-  T extends GenericId<infer _T>
-    ? string
-    : T extends (infer U)[]
-      ? OpaqueIds<U>[]
-      : T extends object
-        ? { [K in keyof T]: OpaqueIds<T[K]> }
-        : T;
-
-export type UseApi<API> = Expand<{
-  [mod in keyof API]: API[mod] extends FunctionReference<
-    infer FType,
-    "public",
-    infer FArgs,
-    infer FReturnType,
-    infer FComponentPath
-  >
-    ? FunctionReference<
-        FType,
-        "internal",
-        OpaqueIds<FArgs>,
-        OpaqueIds<FReturnType>,
-        FComponentPath
-      >
-    : UseApi<API[mod]>;
-}>;

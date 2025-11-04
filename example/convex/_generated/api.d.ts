@@ -16,26 +16,35 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+
+declare const fullApi: ApiFromModules<{
+  checkboxes: typeof checkboxes;
+  example: typeof example;
+}>;
+
 /**
- * A utility for referencing Convex functions in your app's API.
+ * A utility for referencing Convex functions in your app's public API.
  *
  * Usage:
  * ```js
  * const myFunctionReference = api.myModule.myFunction;
  * ```
  */
-declare const fullApi: ApiFromModules<{
-  checkboxes: typeof checkboxes;
-  example: typeof example;
-}>;
-declare const fullApiWithMounts: typeof fullApi;
-
 export declare const api: FilterApi<
-  typeof fullApiWithMounts,
+  typeof fullApi,
   FunctionReference<any, "public">
 >;
+
+/**
+ * A utility for referencing Convex functions in your app's internal API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = internal.myModule.myFunction;
+ * ```
+ */
 export declare const internal: FilterApi<
-  typeof fullApiWithMounts,
+  typeof fullApi,
   FunctionReference<any, "internal">
 >;
 
@@ -89,7 +98,7 @@ export declare const components: {
     };
   };
   migrations: {
-    public: {
+    lib: {
       cancel: FunctionReference<
         "mutation",
         "internal",
@@ -97,17 +106,14 @@ export declare const components: {
         {
           batchSize?: number;
           cursor?: string | null;
+          error?: string;
           isDone: boolean;
-          latestStart?: number;
+          latestEnd?: number;
+          latestStart: number;
           name: string;
           next?: Array<string>;
           processed: number;
-          workerStatus?:
-            | "pending"
-            | "inProgress"
-            | "success"
-            | "failed"
-            | "canceled";
+          state: "inProgress" | "success" | "failed" | "canceled" | "unknown";
         }
       >;
       cancelAll: FunctionReference<
@@ -117,40 +123,40 @@ export declare const components: {
         Array<{
           batchSize?: number;
           cursor?: string | null;
+          error?: string;
           isDone: boolean;
-          latestStart?: number;
+          latestEnd?: number;
+          latestStart: number;
           name: string;
           next?: Array<string>;
           processed: number;
-          workerStatus?:
-            | "pending"
-            | "inProgress"
-            | "success"
-            | "failed"
-            | "canceled";
+          state: "inProgress" | "success" | "failed" | "canceled" | "unknown";
         }>
+      >;
+      clearAll: FunctionReference<
+        "mutation",
+        "internal",
+        { before?: number },
+        null
       >;
       getStatus: FunctionReference<
         "query",
         "internal",
-        { limit?: number; migrationNames?: Array<string> },
+        { limit?: number; names?: Array<string> },
         Array<{
           batchSize?: number;
           cursor?: string | null;
+          error?: string;
           isDone: boolean;
-          latestStart?: number;
+          latestEnd?: number;
+          latestStart: number;
           name: string;
           next?: Array<string>;
           processed: number;
-          workerStatus?:
-            | "pending"
-            | "inProgress"
-            | "success"
-            | "failed"
-            | "canceled";
+          state: "inProgress" | "success" | "failed" | "canceled" | "unknown";
         }>
       >;
-      runMigration: FunctionReference<
+      migrate: FunctionReference<
         "mutation",
         "internal",
         {
@@ -164,17 +170,14 @@ export declare const components: {
         {
           batchSize?: number;
           cursor?: string | null;
+          error?: string;
           isDone: boolean;
-          latestStart?: number;
+          latestEnd?: number;
+          latestStart: number;
           name: string;
           next?: Array<string>;
           processed: number;
-          workerStatus?:
-            | "pending"
-            | "inProgress"
-            | "success"
-            | "failed"
-            | "canceled";
+          state: "inProgress" | "success" | "failed" | "canceled" | "unknown";
         }
       >;
     };

@@ -47,7 +47,7 @@ const toggleHandler = async (
     documentIdx: number;
     arrayIdx: number;
     checked: boolean;
-  }
+  },
 ) => {
   if (documentIdx < 0 || documentIdx >= NUM_DOCUMENTS) {
     throw new Error("documentIdx out of range");
@@ -76,7 +76,7 @@ const toggleHandler = async (
 
   const bytes = checkbox.boxes;
   const view = new Uint8Array(bytes);
-  const newBytes = shiftBit(view, arrayIdx, checked)?.buffer;
+  const newBytes = shiftBit(view, arrayIdx, checked)?.buffer as ArrayBuffer;
 
   if (newBytes) {
     await ctx.db.patch(checkbox._id, {
@@ -129,7 +129,7 @@ export const isChecked = (view: Uint8Array, arrayIdx: number) => {
 export const shiftBit = (
   view: Uint8Array,
   arrayIdx: number,
-  checked: boolean
+  checked: boolean,
 ) => {
   const bit = arrayIdx % 8;
   const uintIdx = Math.floor(arrayIdx / 8);
