@@ -201,7 +201,11 @@ const Cell = ({
         const view = new Uint8Array(currentValue);
         const newBytes = shiftBit(view, arrayIdx, !isCurrentlyChecked)?.buffer;
         if (newBytes) {
-          localStore.setQuery(api.checkboxes.get, { documentIdx }, newBytes);
+          localStore.setQuery(
+            api.checkboxes.get,
+            { documentIdx },
+            newBytes as ArrayBuffer,
+          );
 
           let count = localStore.getQuery(api.checkboxes.countCheckedBoxes);
           if (count !== undefined) {
