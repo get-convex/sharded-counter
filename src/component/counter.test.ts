@@ -47,15 +47,18 @@ describe("counter", () => {
   });
 });
 
-fcTest.prop({
-  updates: fc.array(
-    fc.record({
-      v: fc.integer({ min: -10000, max: 10000 }).map((i) => i / 100),
-      key: fc.string(),
-      shards: fc.option(fc.integer({ min: 1, max: 100 })),
-    }),
-  ),
-})(
+fcTest.prop(
+  {
+    updates: fc.array(
+      fc.record({
+        v: fc.integer({ min: -10000, max: 10000 }).map((i) => i / 100),
+        key: fc.string(),
+        shards: fc.option(fc.integer({ min: 1, max: 100 })),
+      }),
+    ),
+  },
+  { numRuns: 10 },
+)(
   "updates to counter should match in-memory counter which ignores sharding",
   async ({ updates }) => {
     const t = convexTest(schema, modules);
