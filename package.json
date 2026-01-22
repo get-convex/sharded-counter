@@ -74,7 +74,7 @@
     "@vitejs/plugin-react": "5.1.0",
     "chokidar-cli": "3.0.0",
     "convex": "1.31.5",
-    "convex-helpers": "0.1.104",
+    "convex-helpers": "0.1.111",
     "convex-test": "0.0.38",
     "eslint": "9.38.0",
     "eslint-plugin-react-hooks": "7.0.1",
