@@ -1,6 +1,6 @@
 // From https://github.com/atrakh/one-million-checkboxes
 
-import { FixedSizeGrid as Grid } from "react-window";
+import { Grid, type CellComponentProps } from "react-window";
 import { useMutation, useQueries, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import {
@@ -155,33 +155,32 @@ function App() {
         ref={ref}
       >
         <Grid
+          cellComponent={Cell}
+          cellProps={{ flattenedBoxes: boxes, numColumns, numRows }}
           columnCount={numColumns}
           columnWidth={30}
-          height={height}
           rowCount={numRows}
           rowHeight={30}
-          width={width}
-          itemData={{ flattenedBoxes: boxes, numColumns, numRows }}
-        >
-          {Cell}
-        </Grid>
+          style={{ height, width }}
+        />
       </div>
     </div>
   );
 }
 
+type CellProps = {
+  flattenedBoxes: ArrayBuffer[];
+  numColumns: number;
+  numRows: number;
+};
+
 const Cell = ({
   style,
   rowIndex,
   columnIndex,
-  data,
-}: {
-  style: React.CSSProperties;
-  rowIndex: number;
-  columnIndex: number;
-  data: { flattenedBoxes: ArrayBuffer[]; numColumns: number; numRows: number };
-}) => {
-  const { flattenedBoxes, numColumns } = data;
+  flattenedBoxes,
+  numColumns,
+}: CellComponentProps<CellProps>) => {
   const index = rowIndex * numColumns + columnIndex;
   const documentIdx = index % NUM_DOCUMENTS;
   const arrayIdx = Math.floor(index / NUM_DOCUMENTS);
