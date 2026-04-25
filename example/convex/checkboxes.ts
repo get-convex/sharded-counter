@@ -79,7 +79,7 @@ const toggleHandler = async (
   const newBytes = shiftBit(view, arrayIdx, checked)?.buffer as ArrayBuffer;
 
   if (newBytes) {
-    await ctx.db.patch(checkbox._id, {
+    await ctx.db.patch("checkboxes", checkbox._id, {
       idx: checkbox.idx,
       boxes: newBytes,
     });
