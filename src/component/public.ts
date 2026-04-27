@@ -20,7 +20,7 @@ export const add = mutation({
       .withIndex("name", (q) => q.eq("name", args.name).eq("shard", shard))
       .unique();
     if (counter) {
-      await ctx.db.patch(counter._id, {
+      await ctx.db.patch("counters", counter._id, {
         value: counter.value + args.count,
       });
     } else {
@@ -59,7 +59,7 @@ export const rebalance = mutation({
     for (let i = 0; i < shardCount; i++) {
       const shard = counters.find((c) => c.shard === i);
       if (shard) {
-        await ctx.db.patch(shard._id, { value });
+        await ctx.db.patch("counters", shard._id, { value });
       } else {
         await ctx.db.insert("counters", {
           name: args.name,
@@ -70,7 +70,7 @@ export const rebalance = mutation({
     }
     const toDelete = counters.filter((c) => c.shard >= shardCount);
     for (const counter of toDelete) {
-      await ctx.db.delete(counter._id);
+      await ctx.db.delete("counters", counter._id);
     }
   },
 });
@@ -83,7 +83,7 @@ export const reset = mutation({
       .withIndex("name", (q) => q.eq("name", args.name))
       .collect()
       .then((counters) =>
-        Promise.all(counters.map((c) => ctx.db.delete(c._id))),
+        Promise.all(counters.map((c) => ctx.db.delete("counters", c._id))),
       );
   },
 });

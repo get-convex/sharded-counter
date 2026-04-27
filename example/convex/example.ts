@@ -145,7 +145,7 @@ export const insertUserDuringBackfill = internalMutation({
   handler: async (ctx) => {
     const id = await ctx.db.insert("users", { name: "Alice" });
 
-    const userDoc = (await ctx.db.get(id))!;
+    const userDoc = (await ctx.db.get("users", id))!;
     const backfillCursor = await ctx.db.query("backfillCursor").unique();
     if (
       !backfillCursor ||
@@ -175,7 +175,7 @@ export const backfillUsersBatch = internalMutation({
       });
     for (const user of page) {
       await counter.add(ctx, "users");
-      await ctx.db.patch(backfillCursor._id, {
+      await ctx.db.patch("backfillCursor", backfillCursor._id, {
         isDone,
         creationTime: user._creationTime,
         id: user._id,
