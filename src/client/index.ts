@@ -1,5 +1,6 @@
 import type {
   DocumentByName,
+  GenericActionCtx,
   GenericDataModel,
   GenericMutationCtx,
   GenericQueryCtx,
@@ -56,7 +57,7 @@ export class ShardedCounter<ShardsKey extends string> {
    * @param count The amount to increment the counter by. Defaults to 1.
    */
   async add<Name extends ShardsKey>(
-    ctx: RunMutationCtx,
+    ctx: MutationCtx | ActionCtx,
     name: Name,
     count: number = 1,
   ) {
@@ -73,7 +74,7 @@ export class ShardedCounter<ShardsKey extends string> {
    * Decrease the counter for key `name` by `count`.
    */
   async subtract<Name extends ShardsKey>(
-    ctx: RunMutationCtx,
+    ctx: MutationCtx | ActionCtx,
     name: Name,
     count: number = 1,
   ) {
@@ -83,14 +84,14 @@ export class ShardedCounter<ShardsKey extends string> {
   /**
    * Increment the counter for key `name` by 1.
    */
-  async inc<Name extends ShardsKey>(ctx: RunMutationCtx, name: Name) {
+  async inc<Name extends ShardsKey>(ctx: MutationCtx | ActionCtx, name: Name) {
     return this.add(ctx, name, 1);
   }
 
   /**
    * Decrement the counter for key `name` by 1.
    */
-  async dec<Name extends ShardsKey>(ctx: RunMutationCtx, name: Name) {
+  async dec<Name extends ShardsKey>(ctx: MutationCtx | ActionCtx, name: Name) {
     return this.add(ctx, name, -1);
   }
 
@@ -100,7 +101,10 @@ export class ShardedCounter<ShardsKey extends string> {
    * NOTE: this reads from all shards. If used in a mutation, it will contend
    * with all mutations that update the counter for this key.
    */
-  async count<Name extends ShardsKey>(ctx: RunQueryCtx, name: Name) {
+  async count<Name extends ShardsKey>(
+    ctx: QueryCtx | MutationCtx | ActionCtx,
+    name: Name,
+  ) {
     return ctx.runQuery(this.component.public.count, { name });
   }
 
@@ -116,7 +120,10 @@ export class ShardedCounter<ShardsKey extends string> {
    * This operation reads and writes all shards, so it can cause contention if
    * called too often.
    */
-  async rebalance<Name extends ShardsKey>(ctx: RunMutationCtx, name: Name) {
+  async rebalance<Name extends ShardsKey>(
+    ctx: MutationCtx | ActionCtx,
+    name: Name,
+  ) {
     await ctx.runMutation(this.component.public.rebalance, {
       name,
       shards: this.shardsForKey(name),
@@ -128,7 +135,10 @@ export class ShardedCounter<ShardsKey extends string> {
    *
    * @param name The key to clear the counter for.
    */
-  async reset<Name extends ShardsKey>(ctx: RunMutationCtx, name: Name) {
+  async reset<Name extends ShardsKey>(
+    ctx: MutationCtx | ActionCtx,
+    name: Name,
+  ) {
     await ctx.runMutation(this.component.public.reset, { name });
   }
 
@@ -144,7 +154,7 @@ export class ShardedCounter<ShardsKey extends string> {
    * Use this to reduce contention when reading the counter.
    */
   async estimateCount<Name extends ShardsKey>(
-    ctx: RunQueryCtx,
+    ctx: QueryCtx | MutationCtx | ActionCtx,
     name: Name,
     readFromShards: number = 1,
   ) {
@@ -174,50 +184,54 @@ export class ShardedCounter<ShardsKey extends string> {
       /**
        * Add `count` to the counter.
        */
-      add: async (ctx: RunMutationCtx, count: number = 1) =>
+      add: async (ctx: MutationCtx | ActionCtx, count: number = 1) =>
         this.add(ctx, name, count),
       /**
        * Subtract `count` from the counter.
        */
-      subtract: async (ctx: RunMutationCtx, count: number = 1) =>
+      subtract: async (ctx: MutationCtx | ActionCtx, count: number = 1) =>
         this.add(ctx, name, -count),
       /**
        * Increment the counter by 1.
        */
-      inc: async (ctx: RunMutationCtx) => this.add(ctx, name, 1),
+      inc: async (ctx: MutationCtx | ActionCtx) => this.add(ctx, name, 1),
       /**
        * Decrement the counter by 1.
        */
-      dec: async (ctx: RunMutationCtx) => this.add(ctx, name, -1),
+      dec: async (ctx: MutationCtx | ActionCtx) => this.add(ctx, name, -1),
       /**
        * Get the current value of the counter.
        *
        * NOTE: this reads from all shards. If used in a mutation, it will
        * contend with all mutations that update the counter for this key.
        */
-      count: async (ctx: RunQueryCtx) => this.count(ctx, name),
+      count: async (ctx: QueryCtx | MutationCtx | ActionCtx) =>
+        this.count(ctx, name),
       /**
        * Reset the counter for this key.
        */
-      reset: async (ctx: RunMutationCtx) => this.reset(ctx, name),
+      reset: async (ctx: MutationCtx | ActionCtx) => this.reset(ctx, name),
       /**
        * Redistribute counts evenly across the counter's shards.
        *
        * This operation reads and writes all shards, so it can cause contention
        * if called too often.
        */
-      rebalance: async (ctx: RunMutationCtx) => this.rebalance(ctx, name),
+      rebalance: async (ctx: MutationCtx | ActionCtx) =>
+        this.rebalance(ctx, name),
       /**
        * Estimate the counter by only reading from a subset of shards,
        * and extrapolating the total count.
        *
        * Use this to reduce contention when reading the counter.
        */
-      estimateCount: async (ctx: RunQueryCtx, readFromShards: number = 1) =>
-        this.estimateCount(ctx, name, readFromShards),
+      estimateCount: async (
+        ctx: QueryCtx | MutationCtx | ActionCtx,
+        readFromShards: number = 1,
+      ) => this.estimateCount(ctx, name, readFromShards),
     };
   }
-  trigger<Ctx extends RunMutationCtx, Name extends ShardsKey>(
+  trigger<Ctx extends MutationCtx, Name extends ShardsKey>(
     name: Name,
   ): Trigger<Ctx, GenericDataModel, TableNamesInDataModel<GenericDataModel>> {
     return async (ctx, change) => {
@@ -261,9 +275,12 @@ export type Change<
     }
 );
 
-type RunQueryCtx = {
-  runQuery: GenericQueryCtx<GenericDataModel>["runQuery"];
-};
-type RunMutationCtx = {
-  runMutation: GenericMutationCtx<GenericDataModel>["runMutation"];
-};
+type QueryCtx = Pick<GenericQueryCtx<GenericDataModel>, "runQuery">;
+type MutationCtx = Pick<
+  GenericMutationCtx<GenericDataModel>,
+  "runQuery" | "runMutation"
+>;
+type ActionCtx = Pick<
+  GenericActionCtx<GenericDataModel>,
+  "runQuery" | "runMutation" | "runAction"
+>;
