@@ -73,7 +73,7 @@
     "@types/react-window": "2.0.0",
     "@vitejs/plugin-react": "6.0.1",
     "chokidar-cli": "3.0.0",
-    "convex": "1.35.1",
+    "convex": "1.42.0",
     "convex-helpers": "0.1.114",
     "convex-test": "0.0.48",
     "eslint": "9.39.4",
