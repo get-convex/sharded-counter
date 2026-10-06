@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- Improve generics for test entrypoint
+
 ## 0.2.1
 
 - Update ctx arg types for convex 1.41+
